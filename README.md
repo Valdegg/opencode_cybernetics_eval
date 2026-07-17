@@ -42,10 +42,26 @@ software engineering performance.
 
 - [Pier](https://github.com/anomalyco/datacurve-pier) — `pip install datacurve-pier`
   or `uv tool install datacurve-pier`
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Rosetta 2
-  enabled on Apple Silicon
+- A compute backend: either **Modal.com** (cloud, recommended) or **Docker Desktop**
+  (local)
 - An OpenCode API key in `~/.config/opencode/opencode.json` or
   `OPENCODE_ACCESS_TOKEN`
+
+### Compute Backend
+
+Pier supports two execution backends:
+
+- **Modal** (this project's primary backend): Runs trials on Modal's cloud
+  infrastructure. Configure via `pier login modal` and set `type: modal` in
+  the environment config. No local Docker required.
+
+- **Docker** (local fallback): Runs trials on your local machine via Docker
+  Desktop. On Apple Silicon, enable Rosetta 2 (Settings → General → "Use
+  Rosetta for x86/amd64 emulation on Apple Silicon"). Set `type: docker` in
+  the environment config.
+
+The `-dummy` configs default to Docker for fast local iteration. Real task
+configs can target either backend.
 
 ## Approaches Tested
 
@@ -359,11 +375,14 @@ Dummy configs use 1 CPU / 512 MB / 600s.
 
 ## Troubleshooting
 
-- **Docker Desktop on Apple Silicon**: Enable Rosetta 2 emulation (Settings →
-  General → "Use Rosetta for x86/amd64 emulation on Apple Silicon")
+- **Modal credentials**: Run `pier login modal` before using Modal-backed configs.
+- **Docker Desktop on Apple Silicon**: If using local Docker, enable Rosetta 2
+  emulation (Settings → General → "Use Rosetta for x86/amd64 emulation on
+  Apple Silicon")
 - **Rate limits**: The free tier (deepseek-v4-flash-free) has aggressive rate
   limits. Wait between runs or use a paid OpenCode model.
-- **Computer sleep pauses Docker**: Keep the machine awake during long runs.
+- **Computer sleep pauses Docker**: If using local Docker, keep the machine
+  awake during long runs.
 - **Puzzling agent behavior**: Check `agent/trajectory.json` for the full
   step-by-step tool call history.
 - **"docs/ not found" during Docker build**: Files in the task root don't
