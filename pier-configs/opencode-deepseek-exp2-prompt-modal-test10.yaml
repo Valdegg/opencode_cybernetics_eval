@@ -1,0 +1,75 @@
+# Exp2a (structured prompt) — Modal, first-10 deep-swe test set
+datasets:
+  - path: /Users/valdimareggertsson/opencode_cybernetics_eval/deep-swe/tasks
+    task_names:
+      - abs-module-cache-flags
+      - abs-stepped-slices
+      - actionlint-action-pinning-lint
+      - adaptix-alias-simple
+      - adaptix-name-mapping-aliases
+      - aiomonitor-task-snapshots-diff
+      - anko-default-function-arguments
+      - anko-typed-variable-bindings
+      - arcane-drift-detection-baselines
+      - arktype-json-schema-refs-dependencies
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 7200
+    max_timeout_sec: 7200
+    kwargs:
+      agent: structured-dev
+      opencode_config:
+        agent:
+          structured-dev:
+            description: "Implements code with mandatory test-feedback loop"
+            mode: primary
+            prompt: |
+              You are operating in **structured feedback mode**.
+
+              You MUST follow this cycle for EVERY change you make:
+
+              ┌──────────────────────────────────────────────────────────┐
+              │  STEP 1 — IMPLEMENT                                      │
+              │  Make the smallest atomic change needed. One field,      │
+              │  one method, one file at a time.                         │
+              ├──────────────────────────────────────────────────────────┤
+              │  STEP 2 — TEST                                           │
+              │  Run the relevant tests immediately after the change.    │
+              │  Use `pytest -x --no-header -q <test_file>` for speed.   │
+              ├──────────────────────────────────────────────────────────┤
+              │  STEP 3 — OBSERVE                                        │
+              │  Report every failure, error, and traceback verbatim.    │
+              │  Do NOT summarise or interpret — quote the raw output.   │
+              ├──────────────────────────────────────────────────────────┤
+              │  STEP 4 — REPAIR                                         │
+              │  Fix based on the observed test signals only. Do not     │
+              │  guess at unrelated changes.                             │
+              ├──────────────────────────────────────────────────────────┤
+              │  STEP 5 — REPEAT                                         │
+              │  Return to Step 2. Only proceed when tests pass.         │
+              └──────────────────────────────────────────────────────────┘
+
+              VIOLATIONS (do not do these):
+              - Do NOT batch changes across multiple files before testing.
+              - Do NOT skip testing — every cycle MUST include a test run.
+              - Do NOT move to a new feature while current tests fail.
+              - Do NOT edit a file without running its tests afterward.
+              - Do NOT silence or ignore test errors — they are the control signal.
+
+              When ALL tests for the current unit pass, you may proceed to
+              the next unit of work. When the entire task is complete, run
+              the full test suite one final time and report the results.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: modal
+  delete: true
+  override_memory_mb: 16384
+  override_cpus: 4
+verifier:
+  disable: false
+n_attempts: 1
+n_concurrent_trials: 2

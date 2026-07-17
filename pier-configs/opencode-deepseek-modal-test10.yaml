@@ -1,0 +1,34 @@
+# Exp1 (vanilla) — Modal, first-10 deep-swe test set
+datasets:
+  - path: /Users/valdimareggertsson/opencode_cybernetics_eval/deep-swe/tasks
+    task_names:
+      - abs-module-cache-flags
+      - abs-stepped-slices
+      - actionlint-action-pinning-lint
+      - adaptix-alias-simple
+      - adaptix-name-mapping-aliases
+      - aiomonitor-task-snapshots-diff
+      - anko-default-function-arguments
+      - anko-typed-variable-bindings
+      - arcane-drift-detection-baselines
+      - arktype-json-schema-refs-dependencies
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 7200
+    max_timeout_sec: 7200
+    kwargs:
+      opencode_config:
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: modal
+  delete: true
+  override_memory_mb: 16384
+  override_cpus: 4
+verifier:
+  disable: false
+n_attempts: 1
+n_concurrent_trials: 2
