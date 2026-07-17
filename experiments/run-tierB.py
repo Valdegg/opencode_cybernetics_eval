@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
 """Tier B: Task Decomposition Loop wrapper.
 
-Two-phase orchestration:
+Orchestration:
   Phase 0: Planning agent (perm-locked, docs/ only) → plan.json
-  Phase 1-N: Per-step implement → verify → review → repair → persist
+  Phases 1-N: Per-step implement → verify → review → repair → persist
+    Each step N builds on the accumulated state from steps 1..N-1.
+
+Architecture:
+  A `cumulative_dir` is maintained across steps. Each step's implement trial
+  copies from it (so the Docker image already has previous steps' code).
+  The model.patch from each trial = only that step's changes (since _baseline
+  in the container includes previous steps). The step patch is applied back
+  to cumulative_dir for the next step.
 
 Usage:
     python3 experiments/run-tierB.py
     python3 experiments/run-tierB.py --cleanup
     python3 experiments/run-tierB.py --check
 """
-import subprocess, sys, os, shutil, tempfile, re, json, time, textwrap
+import subprocess, sys, os, shutil, tempfile, re, json, textwrap
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -69,7 +77,9 @@ def find_latest_job_dir(before=None):
     jobs_dir = PROJECT_ROOT / "jobs"
     if not jobs_dir.exists():
         return None
-    job_dirs = sorted([d for d in jobs_dir.iterdir() if d.is_dir() and d[0].isdigit()])
+    job_dirs = sorted(
+        [d for d in jobs_dir.iterdir() if d.is_dir() and d.name[0].isdigit()]
+    )
     if not job_dirs:
         return None
     latest = job_dirs[-1]
@@ -78,9 +88,9 @@ def find_latest_job_dir(before=None):
     return latest
 
 
-def copy_task_base():
+def copy_task_dir(source):
     tmp = Path(tempfile.mkdtemp(prefix=TEMP_PREFIX))
-    shutil.copytree(TASK_DIR, tmp, dirs_exist_ok=True, symlinks=True)
+    shutil.copytree(source, tmp, dirs_exist_ok=True, symlinks=True)
     return tmp
 
 
@@ -118,7 +128,7 @@ def inject_docs_into_dockerfile(task_dir):
 
 
 def inject_step_verifier(task_dir, tests):
-    """Replace the standard test runner with a step-specific one."""
+    """Replace the standard test runner with one that runs only step.tests[]."""
     test_sh = task_dir / "tests" / "test.sh"
     test_dockerfile = task_dir / "tests" / "Dockerfile"
     test_names = " ".join(tests)
@@ -158,7 +168,7 @@ def inject_step_verifier(task_dir, tests):
     python3 -c "
     import json
     out = {{
-        'reward': 1 if {len(test_names)} > 0 and $failed == 0 else 0,
+        'reward': 1 if $total > 0 and $failed == 0 else 0,
         'f2p_total': $total,
         'f2p_passed': $passed,
         'p2p_total': 0,
@@ -176,7 +186,7 @@ def inject_step_verifier(task_dir, tests):
     test_sh.write_text(new_test_sh)
     test_sh.chmod(0o755)
 
-    new_df = textwrap.dedent(f"""\
+    new_df = textwrap.dedent("""\
     FROM python:3.12-slim
     RUN apt-get update -qq && apt-get install -y -qq git && rm -rf /var/lib/apt/lists/*
     WORKDIR /app
@@ -195,7 +205,7 @@ def inject_step_verifier(task_dir, tests):
     test_dockerfile.write_text(new_df)
 
 
-def extract_patch_trial(job_dir):
+def extract_patch_file(job_dir):
     trials = [d for d in job_dir.iterdir() if d.is_dir() and "__" in d.name]
     if not trials:
         return None
@@ -214,6 +224,7 @@ def read_trial_verifier_result(job_dir):
 
 
 def read_file_from_patch(patch_path, file_pattern):
+    """Extract the full content of a file from a git patch."""
     if not patch_path or patch_path.stat().st_size == 0:
         return None
     content = patch_path.read_text()
@@ -241,7 +252,12 @@ def read_file_from_patch(patch_path, file_pattern):
 
 
 def apply_patch_to_src(task_dir, patch_path):
-    """Apply model.patch to src/ files in a task directory copy."""
+    """Apply a git model.patch to environment/src/ in a task directory copy.
+    
+    The patch is a `git diff --binary _baseline HEAD`. We parse each file's
+    final content (the '+' lines in each hunk) and write it to the matching
+    path under environment/src/.
+    """
     if not patch_path or patch_path.stat().st_size == 0:
         return False
     content = patch_path.read_text()
@@ -274,7 +290,7 @@ def apply_patch_to_src(task_dir, patch_path):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text('\n'.join(extracted) + '\n')
             applied += 1
-    log(f"Applied {applied} files from patch to reviewer task dir")
+    log(f"Applied {applied} files from patch to src/")
     return applied > 0
 
 
@@ -312,30 +328,29 @@ def main():
     check_prerequisites()
 
     # ================================================================
-    # PHASE 0: Planning
+    # PHASE 0: Planning agent → plan.json
     # ================================================================
     log("=" * 60)
     log("PHASE 0: Planning agent — analyze and produce plan.json")
     log("=" * 60)
 
     before_job = find_latest_job_dir()
-    plan_task_dir = copy_task_base()
-    write_pre_artifacts(plan_task_dir)
-    log(f"Task dir: {plan_task_dir}")
+    plan_dir = copy_task_dir(TASK_DIR)
+    write_pre_artifacts(plan_dir)
 
-    success = run_pier(PLAN_CONFIG, plan_task_dir)
+    run_pier(PLAN_CONFIG, plan_dir)
     phase0_job = find_latest_job_dir(before=before_job)
 
     if not phase0_job:
         log("No job dir for Phase 0 — aborting")
-        shutil.rmtree(plan_task_dir, ignore_errors=True)
+        shutil.rmtree(plan_dir, ignore_errors=True)
         sys.exit(1)
 
-    patch_file = extract_patch_trial(phase0_job)
+    patch_file = extract_patch_file(phase0_job)
     plan_json_str = read_file_from_patch(patch_file, r'docs/plan\.json')
     if not plan_json_str:
         log("plan.json not found in Phase 0 output — aborting")
-        shutil.rmtree(plan_task_dir, ignore_errors=True)
+        shutil.rmtree(plan_dir, ignore_errors=True)
         sys.exit(1)
 
     plan = json.loads(plan_json_str)
@@ -343,89 +358,120 @@ def main():
     log(f"Plan parsed: {len(steps)} steps")
 
     save_results(phase0_job, "tierB-plan", "Phase 0")
-    shutil.rmtree(plan_task_dir, ignore_errors=True)
+    shutil.rmtree(plan_dir, ignore_errors=True)
 
     if not steps:
         log("Plan has no steps — nothing to implement")
         sys.exit(0)
 
     # ================================================================
-    # PHASE 1-N: Per-step loop
+    # PHASES 1-N: Per-step loop
+    #
+    # cumulative_dir tracks the full code state after each step.
+    # Each step's implement trial copies from it (so the Docker image
+    # includes all previous steps' changes). The model.patch from the
+    # trial = only the current step's changes (since _baseline in the
+    # container already includes previous steps). We apply that patch
+    # back to cumulative_dir for the next step.
     # ================================================================
-    accumulated_patch = None
+    cumulative_dir = copy_task_dir(TASK_DIR)
     learnings = []
 
     for step in steps:
         step_id = step["id"]
+        step_patch_file = None  # patch for THIS step only
+
         log("=" * 60)
         log(f"STEP {step_id}: {step['objective']}")
         log("=" * 60)
 
         # --- Implement + verify loop ---
+        # Starts from cumulative_dir (has steps 1..N-1), so the agent
+        # sees the full previous state. The Dockerfile's _baseline will
+        # include previous steps; model.patch captures only step N.
         implement_ok = False
+
         for attempt in range(1, MAX_REPAIR_ATTEMPTS + 1):
             log(f"--- Implement attempt {attempt}/{MAX_REPAIR_ATTEMPTS} ---")
 
-            task_dir = copy_task_base()
-            docs_dir = task_dir / "environment" / "docs"
+            # Build from cumulative state
+            build_dir = copy_task_dir(cumulative_dir)
+            docs_dir = build_dir / "environment" / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
 
-            # Write step details
             (docs_dir / "current-step.json").write_text(json.dumps(step, indent=2))
 
-            # If repair, write repair feedback
             if attempt > 1:
                 (docs_dir / "repair-feedback.json").write_text(json.dumps({
                     "step": step,
                     "attempt": attempt,
-                    "previous_failure": f"Tests failed on attempt {attempt - 1}"
+                    "previous_failure": f"Step-specific tests failed on attempt {attempt - 1}"
                 }))
 
-            inject_docs_into_dockerfile(task_dir)
-            inject_step_verifier(task_dir, step.get("tests", []))
-            write_pre_artifacts(task_dir)
+            inject_docs_into_dockerfile(build_dir)
+            inject_step_verifier(build_dir, step.get("tests", []))
+            write_pre_artifacts(build_dir)
 
             before_impl = find_latest_job_dir()
-            run_pier(IMPLEMENT_CONFIG, task_dir)
+            run_pier(IMPLEMENT_CONFIG, build_dir)
             impl_job = find_latest_job_dir(before=before_impl)
 
             if impl_job:
                 vr = read_trial_verifier_result(impl_job)
-                log(f"Step {step_id} attempt {attempt}: f2p={vr.get('f2p_passed', 0)}/{vr.get('f2p_total', 0)}")
+                f2p = f"{vr.get('f2p_passed', 0)}/{vr.get('f2p_total', 0)}" if vr else "N/A"
+                log(f"Step {step_id} attempt {attempt}: f2p={f2p}")
 
                 save_results(impl_job, f"tierB-step{step_id}-impl", f"Step {step_id} impl attempt {attempt}")
 
-                # Check step-level tests passed
-                if vr and vr.get("f2p_total", 0) > 0 and vr.get("f2p_passed") == vr.get("f2p_total"):
-                    log(f"Step {step_id} passed on attempt {attempt}")
-                    accumulated_patch = extract_patch_trial(impl_job)
-                    implement_ok = True
-                    shutil.rmtree(task_dir, ignore_errors=True)
-                    break
+                # Check step-level tests passed (all listed tests green)
+                step_passed = False
+                if vr and vr.get("f2p_total", 0) > 0:
+                    step_passed = vr["f2p_passed"] == vr["f2p_total"]
                 elif vr and vr.get("f2p_total", 0) == 0:
-                    log(f"No step-specific tests found — treating as passed")
-                    accumulated_patch = extract_patch_trial(impl_job)
-                    implement_ok = True
-                    shutil.rmtree(task_dir, ignore_errors=True)
-                    break
+                    log("No step-specific tests listed — treating as passed")
+                    step_passed = True
 
-            shutil.rmtree(task_dir, ignore_errors=True)
+                if step_passed:
+                    log(f"Step {step_id} passed on attempt {attempt}")
+                    step_patch_file = extract_patch_file(impl_job)
+                    implement_ok = True
+                    shutil.rmtree(build_dir, ignore_errors=True)
+                    break
+            else:
+                log(f"No Pier job produced for attempt {attempt}")
+
+            shutil.rmtree(build_dir, ignore_errors=True)
 
         if not implement_ok:
-            log(f"Step {step_id} failed after {MAX_REPAIR_ATTEMPTS} attempts — continuing")
+            log(f"Step {step_id} failed after {MAX_REPAIR_ATTEMPTS} attempts — continuing to next step")
+            learnings.append({"step": step_id, "passed": False, "attempts": MAX_REPAIR_ATTEMPTS})
             continue
 
+        # --- Apply step patch to cumulative dir ---
+        # After successful implementation, apply this step's changes
+        # to cumulative_dir so the NEXT step builds on top of them.
+        if step_patch_file:
+            apply_patch_to_src(cumulative_dir, step_patch_file)
+
         # --- Review ---
+        # Reviewer gets a fresh copy of cumulative_dir (pre-step state),
+        # then we apply the step patch and write step.patch to docs/
+        # so the reviewer can see exactly what changed.
         log(f"--- Reviewing step {step_id} ---")
 
-        review_dir = copy_task_base()
+        review_dir = copy_task_dir(cumulative_dir)
         docs_dir = review_dir / "environment" / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
+
         (docs_dir / "current-step.json").write_text(json.dumps(step, indent=2))
 
-        # Apply accumulated patch so reviewer sees the code post-changes
-        if accumulated_patch:
-            apply_patch_to_src(review_dir, accumulated_patch)
+        # Apply step patch so reviewer sees the code post-changes
+        if step_patch_file:
+            apply_patch_to_src(review_dir, step_patch_file)
+
+            # Also include the raw patch file so the reviewer can read the diff
+            shutil.copy2(step_patch_file, docs_dir / "step.patch")
+            log(f"Copied step patch to docs/step.patch ({step_patch_file.stat().st_size} bytes)")
 
         inject_docs_into_dockerfile(review_dir)
         write_pre_artifacts(review_dir)
@@ -434,35 +480,34 @@ def main():
         run_pier(REVIEW_CONFIG, review_dir)
         review_job = find_latest_job_dir(before=before_review)
 
+        review_data = None
         if review_job:
             save_results(review_job, f"tierB-step{step_id}-review", f"Step {step_id} review")
 
-            review_patch = extract_patch_trial(review_job)
-            review_json_str = read_file_from_patch(review_patch, r'docs/review\.json')
-            if review_json_str:
+            rp = extract_patch_file(review_job)
+            rj_str = read_file_from_patch(rp, r'docs/review\.json')
+            if rj_str:
                 try:
-                    review = json.loads(review_json_str)
-                    log(f"Review: approved={review.get('approved')}, rework={review.get('requires_rework')}")
+                    review_data = json.loads(rj_str)
+                    log(f"Review: approved={review_data.get('approved')}, rework={review_data.get('requires_rework')}")
 
-                    if not review.get("approved"):
-                        log(f"Step {step_id} not approved: {review.get('feedback', '')[:200]}")
-                        if review.get("requires_rework"):
-                            # TODO: re-enter implement loop for this step
-                            pass
-
-                    if review.get("plan_updates"):
-                        log(f"Plan updates suggested: {review['plan_updates'][:200]}")
+                    if not review_data.get("approved"):
+                        log(f"  Not approved: {review_data.get('feedback', '')[:300]}")
+                        if review_data.get("requires_rework"):
+                            log(f"  Step needs rework — would re-enter repair loop")
+                        if review_data.get("plan_updates"):
+                            log(f"  Plan update suggested: {review_data['plan_updates'][:300]}")
                 except json.JSONDecodeError:
-                    log(f"Review JSON unparseable — continuing")
+                    log("Review JSON unparseable")
 
         shutil.rmtree(review_dir, ignore_errors=True)
 
         # --- Persist ---
         learnings.append({
             "step": step_id,
-            "attempts": attempt if implement_ok else MAX_REPAIR_ATTEMPTS,
-            "passed": implement_ok,
-            "review": review_json_str if review_job and review_json_str else None
+            "passed": True,
+            "attempts": attempt,
+            "review": review_data,
         })
 
     # ================================================================
@@ -478,12 +523,14 @@ def main():
     if phase0_job:
         log(f"  Phase 0 (plan):  {phase0_job.name}")
     for l in learnings:
-        log(f"  Step {l['step']}: {'PASS' if l['passed'] else 'FAIL'} ({l['attempts']} attempts)")
+        status = "PASS" if l["passed"] else "FAIL"
+        log(f"  Step {l['step']}: {status} ({l['attempts']} attempts)")
 
-    # Write learnings
     learnings_file = PROJECT_ROOT / "experiments" / "tierB-learnings.json"
     learnings_file.write_text(json.dumps(learnings, indent=2))
     log(f"Learnings written to {learnings_file}")
+
+    shutil.rmtree(cumulative_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

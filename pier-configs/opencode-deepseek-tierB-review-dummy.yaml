@@ -45,8 +45,8 @@ agents:
               READ FIRST:
               - `/app/docs/current-step.json` — what this step was supposed to do
               - `/app/docs/plan.json` — how this step fits into the full plan
-              - The current state of the source code (post-implementation)
-              - Use `git diff HEAD~1` or `git log` to see what changed
+              - `/app/docs/step.patch` — the git diff of what changed in this step
+              - The current state of the source code (step's changes already applied)
 
               EVALUATE:
               1. Does the implementation satisfy the step's objective?
