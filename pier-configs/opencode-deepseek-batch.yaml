@@ -1,0 +1,26 @@
+datasets:
+  - path: /Users/valdimareggertsson/Documents/Default Project/deep-swe/tasks
+    task_names:
+      - dummy-adaptix-alias
+      - adaptix-name-mapping-aliases
+      - adaptix-alias-simple
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 7200
+    max_timeout_sec: 7200
+    kwargs:
+      opencode_config:
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: docker
+  delete: true
+  override_memory_mb: 16384
+  override_cpus: 4
+verifier:
+  disable: false
+n_attempts: 2
+n_concurrent_trials: 1
