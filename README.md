@@ -4,7 +4,39 @@ This project tests whether **control loop architecture** around an AI coding age
 matters more than the model itself. The model (deepseek-v4-flash-free) stays
 constant; only the controller changes.
 
-See [`EXPERIMENT`](./EXPERIMENT) for the full experimental philosophy.
+See [`EXPERIMENT`](./EXPERIMENT) for the original experimental philosophy, and
+[`docs/cybernetics-framing.rtf`](./docs/cybernetics-framing.rtf) for the full
+cybernetic framing.
+
+## Cybenetic Framing
+
+We model autonomous software engineering through the lens of cybernetics.
+The software repository and its execution environment form the **plant**, whose
+state consists of source code, dependencies, documentation, and runtime behaviour.
+The LLM acts as the **controller**, selecting actions (edit code, run tools,
+terminate). The controller never directly observes the plant's true state —
+it receives **observations** through repository files, test output, logs, and
+other artefacts, and constructs an internal estimate before acting.
+
+Loop engineering is therefore the engineering of the **observation and feedback
+architecture** surrounding the controller. Rather than changing the model, we
+modify what information it is required to observe, when those observations occur,
+and how they influence subsequent decisions. The 7 experiments progressively
+enrich this architecture:
+
+| Exp | Cybernetic principle | Newly enforced observation |
+|-----|---------------------|---------------------------|
+| 1 | Baseline | None — default agent behaviour |
+| 2 | Negative feedback | Execution and test results after every implementation cycle |
+| 3 | Good Regulator Theorem | Repository analysis and planning before implementation |
+| 4 | High-frequency observation | Verification after every implementation step |
+| 5 | Persistent state estimation | Recording and reuse of previous observations |
+| 6 | Independent observation | Reviewer-generated observations from a second agent |
+| 7 | Hierarchical control | Whole-system observations before completion |
+
+The controller (LLM) remains fixed throughout. The study investigates how
+progressively enriching the observation architecture influences autonomous
+software engineering performance.
 
 ## Prerequisites
 
