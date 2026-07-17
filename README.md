@@ -21,33 +21,62 @@ other artefacts, and constructs an internal estimate before acting.
 Loop engineering is therefore the engineering of the **observation and feedback
 architecture** surrounding the controller. Rather than changing the model, we
 modify what information it is required to observe, when those observations occur,
-and how they influence subsequent decisions. The 7 experiments progressively
-enrich this architecture:
+and how they influence subsequent decisions. We test three tiers of control loop:
 
-| Exp | Cybernetic principle | Newly enforced observation |
-|-----|---------------------|---------------------------|
-| 1 | Baseline | None — default agent behaviour |
-| 2 | Negative feedback | Execution and test results after every implementation cycle |
-| 3 | Good Regulator Theorem | Repository analysis and planning before implementation |
-| 4 | High-frequency observation | Verification after every implementation step |
-| 5 | Persistent state estimation | Recording and reuse of previous observations |
-| 6 | Independent observation | Reviewer-generated observations per step; plan may be updated |
-| 7 | Hierarchical control | Whole-system verification + review before completion |
+| Tier | Name | Loop script |
+|---|---|---|
+| **A** | Preparation | `explore → document → plan` then implement |
+| **B** | Task Decomposition | A + per-step `implement → verify → review → persist → repair` loop |
+| **C** | System Convergence | B + whole-system `full_suite → review → repair` convergence loop |
 
 The controller (LLM) remains fixed throughout. The study investigates how
 progressively enriching the observation architecture influences autonomous
 software engineering performance.
 
-**The experiments are cumulative.** Each experiment builds on the mechanisms
-introduced previously:
-- Exp 4 (step-level verification) requires Exp 3's plan — you cannot verify
-  individual steps without first having a decomposed task.
-- Exp 6 (independent review) operates **per step**, not just at the end. After
-  each step is verified (Exp 4), an independent reviewer evaluates the result
-  and may propose updates to the remaining plan.
-- Exp 7 applies the same per-step verification + review pattern to the **whole
-  system** after all steps are complete — a final convergence loop over the
-  integrated result.
+Each tier enforces a longer script around the same model:
+
+```python
+──── Tier A: Preparation (Research + Planning) ────
+explore(task)
+document(analysis)          # repository-analysis.md
+plan = create_plan(analysis) # plan.md with steps + success criteria per step
+
+
+──── Tier B: Task Decomposition Loop ────
+for step in plan:
+  repeat until verify.passed and review.approved:
+    implement(step)
+    verify(step)              # run tests + check success criteria
+    if failed → repair, continue
+    review = independent_review(step)      # agent critic
+    if rejected → plan = update_plan(plan, review), continue
+    persist(learnings)
+
+
+──── Tier C: System Convergence Loop ────
+# Tier A + Tier B executed above...
+
+repeat until all_tests_pass and review.approved:
+  run_all_tests()
+  if any test fails → repair, continue
+  review = independent_review(system)
+  if rejected → repair, continue
+  persist(learnings)
+```
+
+### Historical note
+
+These three tiers evolved from a 7-experiment progression that isolated each
+mechanism individually. An earlier version of this document (and the archived
+RTF) describes Exp 1-7 separately. The A/B/C framing collapses them into three
+testable loop configurations:
+
+| Early experiments | Feeds into |
+|---|---|
+| Exp 1 (vanilla), Exp 2 (feedback), Exp 2b (orchestrator) | Baseline — no loop |
+| Exp 3 (state estimation) | Tier A — preparation |
+| Exp 4 (step verification), Exp 5 (persistence), Exp 6 (independent review) | Tier B — task decomposition |
+| Exp 7 (system convergence) | Tier C — system convergence |
 
 ## Prerequisites
 
@@ -76,15 +105,25 @@ configs can target either backend.
 
 ## Approaches Tested
 
-| Exp | Config | Description | How the loop is enforced | Result |
+| Tier | Config | Description | How the loop is enforced | Result |
 |---|---|---|---|---|
-| **Exp1** — Vanilla | `opencode-deepseek.yaml` | Default agent, no custom prompt. Baseline. | Nothing — agent decides when to test | Baseline |
-| **Exp2a** — Structured prompt | `opencode-deepseek-exp2-prompt.yaml` | System prompt: implement → test → fix → repeat | **Prompt** — agent is asked politely; can still ignore | ❌ Agent ignored the loop entirely |
-| **Exp2b** — Orchestrator | `opencode-deepseek-exp2-orchestrator.yaml` | Role-split agents: coder (edit-only), tester (test-only), fixer (edit+test), orchestrator (delegates) | **Permissions** — coder can't run tests, tester can't edit | ✅ Delegation enforced |
-| **Exp3** — Docs-first prompt | `opencode-deepseek-exp3-docs-dummy.yaml` | Prompt tells agent to document → plan → implement in phases | **Prompt** — same as Exp2a but with doc-writing steps | ❌ Agent skipped docs entirely |
-| **Exp3b** — Two-phase (research → implement) | `...-research-dummy.yaml` + `...-implement-dummy.yaml` | Phase 1: research agent (can only write `docs/`). Phase 2: implementation agent with docs pre-populated. | **Permissions** — research agent has `edit: deny` on source, read-only bash; literally cannot write code | ✅ Research agent forced to produce docs |
+| **A** | `opencode-deepseek-exp3b-research-dummy.yaml` + `...-implement-dummy.yaml` | Two-phase research agent → implement agent | **Permissions** — research agent locked to `docs/` only | ✅ Research agent forced to produce docs |
+| **B** | (planned) | A + per-step implement → verify → review → repair loop | Permissions + script | TBD |
+| **C** | (planned) | B + whole-system test + review convergence loop | Permissions + script | TBD |
 
-Each has a `-dummy` variant that uses the smaller dummy task for rapid iteration.
+### Earlier baselines (Exp 1–3b)
+
+These earlier configurations informed the A/B/C design. See the historical note at the top of this document.
+
+| Early experiment | What it tested | Key finding |
+|---|---|---|
+| **Exp1** Vanilla | Default agent, no custom prompt | Baseline (181K in, 9/9 F2P) |
+| **Exp2a** Structured prompt | Implement → test → fix in system prompt | ❌ Agent ignored the loop — prompt alone is insufficient |
+| **Exp2b** Orchestrator | Role-split agents with permission enforcement | ✅ Permissions structurally enforce delegation |
+| **Exp3** Docs-first prompt | Prompt says "document before coding" | ❌ Agent skipped docs entirely |
+| **Exp3b** Two-phase research→implement | Research agent locked to `docs/`, then implement | ✅ Permission enforcement works. 335 lines of docs produced. |
+
+Each `-dummy` config uses a smaller dummy task for rapid iteration.
 
 ## Key Learnings
 
@@ -319,7 +358,7 @@ Then run it:
 ./experiments/run-task.sh my-new-approach deep-swe/tasks/dummy-adaptix-alias 1
 ```
 
-### Adding a Two-Phase Experiment
+### Adding a Two-Phase Experiment (Tier A)
 
 For a research → implement workflow, create two configs and a wrapper:
 
@@ -367,7 +406,7 @@ cat jobs/<job>/<trial>/agent/trajectory.json | jq '.[] | {step, tool, input, out
 
 ## Config Reference
 
-| Config file | Experiment | Mode | Notes |
+| Config file | Tier / Exp | Mode | Notes |
 |---|---|---|---|
 | `opencode-deepseek.yaml` | Exp1 | Vanilla | Baseline, no custom prompt |
 | `opencode-deepseek-dummy.yaml` | Exp1-dummy | Vanilla | Same but for dummy task |
@@ -376,8 +415,8 @@ cat jobs/<job>/<trial>/agent/trajectory.json | jq '.[] | {step, tool, input, out
 | `opencode-deepseek-exp2-orchestrator.yaml` | Exp2b | Orchestrator | Subagent role split |
 | `opencode-deepseek-exp2-orchestrator-dummy.yaml` | Exp2b-dummy | Orchestrator | Same for dummy task |
 | `opencode-deepseek-exp3-docs-dummy.yaml` | Exp3 | Docs-first prompt | Prompt-only; agent ignored |
-| `opencode-deepseek-exp3b-research-dummy.yaml` | Exp3b Phase 1 | Research (perm-locked) | Can only write `docs/` |
-| `opencode-deepseek-exp3b-implement-dummy.yaml` | Exp3b Phase 2 | Vanilla implementation | Docs pre-populated in image |
+| `opencode-deepseek-exp3b-research-dummy.yaml` | **Tier A** Phase 1 | Research (perm-locked) | Can only write `docs/` |
+| `opencode-deepseek-exp3b-implement-dummy.yaml` | **Tier A** Phase 2 | Vanilla implementation | Docs pre-populated in image |
 | `opencode-deepseek-batch.yaml` | — | Batch vanilla | Runs vanilla on 3 tasks sequentially |
 | `opencode-deepseek-exp2.yaml` | — | — | Deprecated (use exp2-prompt) |
 
