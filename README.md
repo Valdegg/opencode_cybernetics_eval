@@ -33,36 +33,108 @@ The controller (LLM) remains fixed throughout. The study investigates how
 progressively enriching the observation architecture influences autonomous
 software engineering performance.
 
-Each tier enforces a longer script around the same model:
+Each tier enforces a longer script around the same model (`//` = outer orchestrator, `#` = inner agent behaviour within a single Pier run):
 
 ```python
-──── Tier A: Preparation (Research + Planning) ────
+# ─────────────────────────────────────────────
+# Tier A: Preparation (Research + Planning)
+# ─────────────────────────────────────────────
+
+// 1. Run planning agent (permission-locked to docs/, verifier disabled)
 explore(task)
-document(analysis)          # repository-analysis.md
-plan = create_plan(analysis) # plan.md with steps + success criteria per step
+document(repository-analysis.md)            # human-readable architecture analysis
+
+// 2. Planning agent writes a **machine-parseable plan** with explicit
+//    success criteria per step (plan.json — parsed by the orchestrator)
+plan = create_plan(analysis) -> plan.json   # each step has: objective, files,
+                                            #   tests[], success_criteria[],
+                                            #   expected_changes[]
+
+// 3. Run implement agent (docs baked into Docker image, prompted to read them)
+implement(plan)
 
 
-──── Tier B: Task Decomposition Loop ────
-for step in plan:
-  repeat until verify.passed and review.approved:
-    implement(step)
-    verify(step)              # run tests + check success criteria
-    if failed → repair, continue
-    review = independent_review(step)      # agent critic
-    if rejected → plan = update_plan(plan, review), continue
-    persist(learnings)
+# ─────────────────────────────────────────────
+# Tier B: Task Decomposition Loop
+# ─────────────────────────────────────────────
+
+// Phase 0 — same as Tier A step 1+2: planner produces plan.json
+plan = run_planning_agent(task) -> plan.json
+
+// Phase 1-N — per-step loop, orchestrated by run-tierB.py
+for step in plan:                          # each step parsed from plan.json
+
+  # --- Inner repair loop (same step, retry on failure) ---
+  repeat at most N times:
+
+    # Inject step context into the task directory
+    write(current-step.json)               # step.id, .objective, .files,
+                                           #   .tests[], .success_criteria[]
+    write(repair-feedback.json)            # only on retry: why the last attempt failed
+
+    // Generate a **step-specific verifier** — runs ONLY the tests
+    // listed in plan.json for this step, so reward.json is scoped to
+    // this step's criteria. Injects it into the task's tests/ directory.
+    inject_step_verifier(step.tests)
+
+    // Run one Pier trial: implement agent + step-specific verifier
+    run implement(step)                    # agent reads current-step.json
+    results = parse_verifier(reward.json)  # did step.tests[] pass?
+
+    if results.passed:                     # all step-specific tests green
+      break                                # exit repair loop, move to review
+    else:
+      write(repair-feedback.json, results.failures)
+      # loop back for another attempt (up to N)
+
+  # --- Independent review (separate Pier run, read-only agent) ---
+  // Creates a fresh copy of the task dir, applies the implement patch
+  // so the reviewer sees the code post-changes, then runs the reviewer
+  // agent (permission: read-only bash + docs/ write for review.json)
+  apply_patch(accumulated_patch)
+  run review(step)                         # evaluates success_criteria[],
+                                           #   examines git diff, reads code
+  review = parse(review.json)              # {approved, requires_rework,
+                                           #   feedback, plan_updates}
+
+  if not review.approved:
+    update_plan(plan.json, review.plan_updates)
+    if review.requires_rework:
+      # re-enter the repair loop for this same step
+      write(repair-feedback.json, review.feedback)
+      continue(repeat)
+
+  # --- Persist step learnings ---
+  append(docs/learnings.md, step.id, results, review)
 
 
-──── Tier C: System Convergence Loop ────
-# Tier A + Tier B executed above...
+# ─────────────────────────────────────────────
+# Tier C: System Convergence Loop
+# ─────────────────────────────────────────────
 
+// Tier A + Tier B executed above — all steps implemented
+
+// Final convergence: apply all accumulated patches, run the FULL test suite,
+// then independent system-level review. Loop until both pass.
 repeat until all_tests_pass and review.approved:
-  run_all_tests()
-  if any test fails → repair, continue
-  review = independent_review(system)
-  if rejected → repair, continue
+
+  run_all_tests()                          # full suite — including held-out tests
+  if any test fails:
+    repair(failure_details)
+    continue
+
+  review = independent_review(system)      # agent evaluates the integrated system
+  if not review.approved:
+    repair(review.feedback)
+    continue
+
   persist(learnings)
 ```
+
+Key invariants:
+- **Success criteria are generated during planning** (Phase 0), not during implementation. The planner agent writes `plan.json` with explicit `success_criteria[]` per step. These criteria drive both verification ("did the tests listed for this step pass?") and review ("does the code satisfy the criteria?").
+- **Verification is scoped per step** — the step-specific test runner only runs `step.tests[]`, not the full suite. This gives a precise pass/fail signal for each step in isolation.
+- **Review is independent** — a separate agent (read-only permissions, no code access) evaluates the step's output against its success criteria and may propose plan updates for remaining steps.
 
 ### Historical note
 
