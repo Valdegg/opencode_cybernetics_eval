@@ -15,7 +15,7 @@ PIER_CONFIGS = PROJECT_ROOT / "pier-configs"
 RESULTS_FILE = PROJECT_ROOT / "experiments/results.json"
 
 RESEARCH_CONFIG = PIER_CONFIGS / "opencode-deepseek-exp3b-research-dummy.yaml"
-IMPLEMENT_CONFIG = PIER_CONFIGS / "opencode-deepseek-exp3b-implement-dummy.yaml"
+IMPLEMENT_CONFIG = PIER_CONFIGS / "opencode-deepseek-tierA-implement-dummy.yaml"
 
 TEMP_PREFIX = "exp3b-task-"
 
@@ -252,7 +252,7 @@ def main():
     # PHASE 2: Implementation
     # ============================================================
     log("=" * 60)
-    log("PHASE 2: Implementation agent — implement with docs pre-populated")
+    log("PHASE 2: Implementation agent — read docs/ and follow the plan")
     log("=" * 60)
 
     before_job2 = find_latest_job_dir()

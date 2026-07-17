@@ -1,0 +1,34 @@
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 600
+    max_timeout_sec: 600
+    kwargs:
+      opencode_config:
+        prompt: |
+          A repository analysis and implementation plan have been prepared in the
+          `docs/` directory. Before writing any code:
+
+          1. Read `/app/docs/repository-analysis.md` thoroughly.
+          2. Read `/app/docs/plan.md` — it contains a step-by-step plan with
+             success criteria for each step.
+          3. Follow the plan exactly. Implement one step at a time. After each
+             step, verify correctness by running the relevant tests.
+          4. Do not skip ahead or implement steps out of order. If a step's
+             success criteria are not met, fix it before moving on.
+
+          The plan is your source of truth. If you find an issue with the plan,
+          update `docs/plan.md` and commit the change.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: docker
+  delete: true
+  override_cpus: 1
+  override_memory_mb: 512
+verifier:
+  disable: false
+n_attempts: 1
+n_concurrent_trials: 1

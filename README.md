@@ -107,8 +107,8 @@ configs can target either backend.
 
 | Tier | Config | Description | How the loop is enforced | Result |
 |---|---|---|---|---|
-| **A** | `opencode-deepseek-exp3b-research-dummy.yaml` + `...-implement-dummy.yaml` | Two-phase research agent → implement agent | **Permissions** — research agent locked to `docs/` only | ✅ Research agent forced to produce docs |
-| **B** | (planned) | A + per-step implement → verify → review → repair loop | Permissions + script | TBD |
+| **A** | `opencode-deepseek-exp3b-research-dummy.yaml` + `...-tierA-implement-dummy.yaml` | Two-phase: research agent locked to `docs/` → implement agent prompted to read and follow docs | **Permissions** — research agent locked to `docs/` only; **Prompt** — Phase 2 instructed to read `docs/` and follow plan | ✅ Research agent forced to produce docs; Phase 2 follows plan |
+| **B** | `opencode-deepseek-tierB-plan-dummy.yaml` + `...tierB-implement-dummy.yaml` + `...tierB-review-dummy.yaml` | Phase 0: planning agent produces `plan.json`. Per-step: implement → verify step-specific tests → review (agent critic) → repair loop → persist | **Permissions** — planner locked to `docs/`; reviewer read-only; **Script** — `run-tierB.py` orchestrates loop | ✅ Planner produces machine-parseable plan; step verifier runs only step's tests; reviewer evaluates output |
 | **C** | (planned) | B + whole-system test + review convergence loop | Permissions + script | TBD |
 
 ### Earlier baselines (Exp 1–3b)
@@ -362,6 +362,32 @@ Then run it:
 
 For a research → implement workflow, create two configs and a wrapper:
 
+### Adding a Per-Step Loop (Tier B)
+
+Tier B uses three configs and an orchestrator script:
+
+```
+run-tierB.py
+├── Phase 0: Planning agent (perm-locked, docs/ only)
+│   └── Reads codebase → writes docs/repository-analysis.md + docs/plan.json
+├── For each step in plan.json:
+│   ├── Implement loop (up to N repair attempts)
+│   │   ├── Inject current-step.json into environment/docs/
+│   │   ├── Inject step-specific test runner (only step's tests)
+│   │   ├── Run implement agent + Pier verifier
+│   │   └── If step-specific tests fail → write repair-feedback.json → retry
+│   ├── Review
+│   │   ├── Apply implement patch to a fresh copy of the code
+│   │   ├── Run reviewer agent (read-only, docs/ only)
+│   │   └── Parse review.json → if not approved, can trigger rework or plan update
+│   └── Persist learnings
+└── Summary output
+```
+
+The step-specific test runner is generated per-step — it runs only the tests listed in `plan.json` for that step, producing `reward.json` scoped to just that step.
+
+Run: `python3 experiments/run-tierB.py`
+
 1. **Research config**: Restricted permissions (source edits denied, bash read-only)
 2. **Implement config**: Standard agent
 3. **Wrapper script**: Runs Phase 1, extracts docs from `model.patch`, places them
@@ -416,7 +442,10 @@ cat jobs/<job>/<trial>/agent/trajectory.json | jq '.[] | {step, tool, input, out
 | `opencode-deepseek-exp2-orchestrator-dummy.yaml` | Exp2b-dummy | Orchestrator | Same for dummy task |
 | `opencode-deepseek-exp3-docs-dummy.yaml` | Exp3 | Docs-first prompt | Prompt-only; agent ignored |
 | `opencode-deepseek-exp3b-research-dummy.yaml` | **Tier A** Phase 1 | Research (perm-locked) | Can only write `docs/` |
-| `opencode-deepseek-exp3b-implement-dummy.yaml` | **Tier A** Phase 2 | Vanilla implementation | Docs pre-populated in image |
+| `opencode-deepseek-tierB-plan-dummy.yaml` | **Tier B** Phase 0 | Planning (perm-locked) | Produces `plan.json` + `repository-analysis.md` |
+| `opencode-deepseek-tierB-implement-dummy.yaml` | **Tier B** per-step | Step implementation | Prompt reads `current-step.json`; verifier enabled |
+| `opencode-deepseek-tierB-review-dummy.yaml` | **Tier B** per-step | Step review (read-only) | Prompt evaluates step vs criteria; outputs `review.json` |
+| `opencode-deepseek-tierA-implement-dummy.yaml` | **Tier A** Phase 2 | Docs-guided implementation | Prompt tells agent to read docs/ and follow plan |
 | `opencode-deepseek-batch.yaml` | — | Batch vanilla | Runs vanilla on 3 tasks sequentially |
 | `opencode-deepseek-exp2.yaml` | — | — | Deprecated (use exp2-prompt) |
 

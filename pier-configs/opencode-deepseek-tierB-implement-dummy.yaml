@@ -1,0 +1,35 @@
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 600
+    max_timeout_sec: 600
+    kwargs:
+      opencode_config:
+        prompt: |
+          You are implementing a single step of a larger plan.
+
+          Read `/app/docs/current-step.json` — it contains:
+          - The step's objective
+          - Which files to modify
+          - Success criteria
+          - Which tests are relevant to this step
+
+          Implement ONLY this step. Do not implement future steps or unrelated
+          functionality. If the step has repair feedback (previous attempt failed),
+          read `/app/docs/repair-feedback.json` for details on what went wrong.
+
+          After implementing, verify correctness by running the relevant tests.
+          If tests fail, fix the issues before finishing.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: docker
+  delete: true
+  override_cpus: 1
+  override_memory_mb: 512
+verifier:
+  disable: false
+n_attempts: 1
+n_concurrent_trials: 1

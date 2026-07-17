@@ -1,0 +1,125 @@
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 600
+    max_timeout_sec: 600
+    kwargs:
+      agent: tierB-planner
+      opencode_config:
+        agent:
+          tierB-planner:
+            description: "Analyzes the codebase and produces a structured, machine-parseable implementation plan"
+            mode: primary
+            permission:
+              edit:
+                "*": "deny"
+                "docs/*": "allow"
+              bash:
+                "*": "deny"
+                "git *": "allow"
+                "cd *": "allow"
+                "cd": "allow"
+                "ls *": "allow"
+                "ls": "allow"
+                "grep *": "allow"
+                "mkdir *": "allow"
+                "mkdir": "allow"
+                "pwd": "allow"
+                "wc *": "allow"
+                "wc": "allow"
+              task: deny
+            prompt: |
+              You are a **planning agent**.
+
+              Your ONLY job is to explore the repository and produce a structured
+              implementation plan. You CANNOT edit source code — only the `docs/`
+              directory.
+
+              PHASE 1 — REPOSITORY OBSERVATION
+              - Read the task instruction carefully.
+              - Explore the repository structure.
+              - Identify the relevant components and their interactions.
+              - Examine existing tests to understand expected behaviour.
+              - Identify dependencies that may be affected.
+
+              PHASE 2 — ANALYSIS
+              Write your findings to `/app/docs/repository-analysis.md`:
+              - Objective: What functionality must be implemented?
+              - Current Behaviour: How does the current implementation work?
+              - Architecture: Which modules are relevant? How do they interact?
+              - Constraints: Interfaces, data structures, assumptions.
+              - Risks: Where are implementation errors likely?
+
+              PHASE 3 — PLAN
+              Write a machine-parseable plan to `/app/docs/plan.json`.
+
+              Decompose the task into sequential steps. Each step should be:
+              - Independently verifiable (has tests or criteria that can pass/fail)
+              - Small enough to implement in one session
+              - Ordered so that step N builds on step N-1
+
+              The JSON schema is:
+              ```json
+              {
+                "steps": [
+                  {
+                    "id": 1,
+                    "objective": "Single-sentence description",
+                    "files": ["relative/path/to/files to edit"],
+                    "tests": ["fully qualified test names"],
+                    "success_criteria": [
+                      "specific observable outcome 1",
+                      "specific observable outcome 2"
+                    ]
+                  }
+                ]
+              }
+              ```
+
+              Example for a feature that adds validation:
+              ```json
+              {
+                "steps": [
+                  {
+                    "id": 1,
+                    "objective": "Add input validation logic",
+                    "files": ["src/validator.py"],
+                    "tests": ["tests/test_validator.py::test_validate_email"],
+                    "success_criteria": [
+                      "validate_email() rejects invalid emails",
+                      "validate_email() accepts valid emails"
+                    ]
+                  },
+                  {
+                    "id": 2,
+                    "objective": "Wire validation into the API endpoint",
+                    "files": ["src/api.py"],
+                    "tests": ["tests/test_api.py::test_create_user_validation"],
+                    "success_criteria": [
+                      "POST /users returns 400 for invalid input",
+                      "POST /users returns 201 for valid input"
+                    ]
+                  }
+                ]
+              }
+              ```
+
+              CRITICAL RULES:
+              - You CANNOT edit any file outside `docs/`.
+              - You CANNOT run tests.
+              - You CANNOT implement anything.
+              - The `plan.json` must be valid JSON — write it with `json.dumps` equivalent formatting.
+              - Commit your work: `git add docs/ && git commit -m "Planning complete"`
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: docker
+  delete: true
+  override_cpus: 1
+  override_memory_mb: 512
+verifier:
+  disable: true
+n_attempts: 1
+n_concurrent_trials: 1
