@@ -179,7 +179,7 @@ configs can target either backend.
 
 | Tier | Config | Description | How the loop is enforced | Result |
 |---|---|---|---|---|
-| **A** | `opencode-deepseek-exp3b-research-dummy.yaml` + `...-tierA-implement-dummy.yaml` | Two-phase: research agent locked to `docs/` → implement agent prompted to read and follow docs | **Permissions** — research agent locked to `docs/` only; **Prompt** — Phase 2 instructed to read `docs/` and follow plan | ✅ Research agent forced to produce docs; Phase 2 follows plan |
+| **A** | `opencode-deepseek-tierA-research-dummy.yaml` + `...tierA-implement-dummy.yaml` | Two-phase: research agent locked to `docs/` → implement agent prompted to read and follow docs | **Permissions** — research agent locked to `docs/` only; **Prompt** — Phase 2 instructed to read `docs/` and follow plan | ✅ Research agent forced to produce docs; Phase 2 follows plan |
 | **B** | `opencode-deepseek-tierB-plan-dummy.yaml` + `...tierB-implement-dummy.yaml` + `...tierB-review-dummy.yaml` | Phase 0: planning agent produces `plan.json`. Per-step: implement → verify step-specific tests → review (agent critic) → repair loop → persist | **Permissions** — planner locked to `docs/`; reviewer read-only; **Script** — `run-tierB.py` orchestrates loop | ✅ Planner produces machine-parseable plan; step verifier runs only step's tests; reviewer evaluates output |
 | **C** | (planned) | B + whole-system test + review convergence loop | Permissions + script | TBD |
 
@@ -517,6 +517,7 @@ cat jobs/<job>/<trial>/agent/trajectory.json | jq '.[] | {step, tool, input, out
 | `opencode-deepseek-tierB-plan-dummy.yaml` | **Tier B** Phase 0 | Planning (perm-locked) | Produces `plan.json` + `repository-analysis.md` |
 | `opencode-deepseek-tierB-implement-dummy.yaml` | **Tier B** per-step | Step implementation | Prompt reads `current-step.json`; verifier enabled |
 | `opencode-deepseek-tierB-review-dummy.yaml` | **Tier B** per-step | Step review (read-only) | Prompt evaluates step vs criteria; outputs `review.json` |
+| `opencode-deepseek-tierA-research-dummy.yaml` | **Tier A** Phase 1 | Research + planning (perm-locked) | Produces `plan.json` with per-step success criteria |
 | `opencode-deepseek-tierA-implement-dummy.yaml` | **Tier A** Phase 2 | Docs-guided implementation | Prompt tells agent to read docs/ and follow plan |
 | `opencode-deepseek-batch.yaml` | — | Batch vanilla | Runs vanilla on 3 tasks sequentially |
 | `opencode-deepseek-exp2.yaml` | — | — | Deprecated (use exp2-prompt) |
