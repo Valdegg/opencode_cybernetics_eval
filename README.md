@@ -31,19 +31,23 @@ enrich this architecture:
 | 3 | Good Regulator Theorem | Repository analysis and planning before implementation |
 | 4 | High-frequency observation | Verification after every implementation step |
 | 5 | Persistent state estimation | Recording and reuse of previous observations |
-| 6 | Independent observation | Reviewer-generated observations from a second agent |
-| 7 | Hierarchical control | Whole-system observations before completion |
+| 6 | Independent observation | Reviewer-generated observations per step; plan may be updated |
+| 7 | Hierarchical control | Whole-system verification + review before completion |
 
 The controller (LLM) remains fixed throughout. The study investigates how
 progressively enriching the observation architecture influences autonomous
 software engineering performance.
 
 **The experiments are cumulative.** Each experiment builds on the mechanisms
-introduced previously. For example, step-level verification (Exp 4) depends on
-having a structured plan (Exp 3) that defines what the steps are — you cannot
-verify individual steps without first having a decomposed task. Similarly,
-independent review (Exp 6) evaluates a plan-driven, step-verified implementation
-(Exps 3-5), not an ad-hoc one.
+introduced previously:
+- Exp 4 (step-level verification) requires Exp 3's plan — you cannot verify
+  individual steps without first having a decomposed task.
+- Exp 6 (independent review) operates **per step**, not just at the end. After
+  each step is verified (Exp 4), an independent reviewer evaluates the result
+  and may propose updates to the remaining plan.
+- Exp 7 applies the same per-step verification + review pattern to the **whole
+  system** after all steps are complete — a final convergence loop over the
+  integrated result.
 
 ## Prerequisites
 
