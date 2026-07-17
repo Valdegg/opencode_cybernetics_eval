@@ -38,6 +38,13 @@ The controller (LLM) remains fixed throughout. The study investigates how
 progressively enriching the observation architecture influences autonomous
 software engineering performance.
 
+**The experiments are cumulative.** Each experiment builds on the mechanisms
+introduced previously. For example, step-level verification (Exp 4) depends on
+having a structured plan (Exp 3) that defines what the steps are — you cannot
+verify individual steps without first having a decomposed task. Similarly,
+independent review (Exp 6) evaluates a plan-driven, step-verified implementation
+(Exps 3-5), not an ad-hoc one.
+
 ## Prerequisites
 
 - [Pier](https://github.com/anomalyco/datacurve-pier) — `pip install datacurve-pier`
