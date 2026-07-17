@@ -39,7 +39,7 @@ for trial_dir in sorted(trial_dirs):
     with open(result_path) as f:
         trial = json.load(f)
 
-    vr = trial.get("verifier_result", {}).get("rewards", {})
+    vr = (trial.get("verifier_result") or {}).get("rewards", {})
     ar = trial.get("agent_result", {})
     ae = trial.get("agent_execution", {})
     exc = trial.get("exception_info")
@@ -113,5 +113,7 @@ results.append(agg)
 with open(results_file, "w") as f:
     json.dump(results, f, indent=2)
 
-print(f"\nAggregate: {f2p_sum}/{f2p_total} f2p ({f2p_sum/f2p_total*100:.1f}%), {p2p_sum}/{p2p_total} p2p")
+f2p_pct = f2p_sum / f2p_total * 100 if f2p_total else 0
+p2p_pct = p2p_sum / p2p_total * 100 if p2p_total else 0
+print(f"\nAggregate: {f2p_sum}/{f2p_total} f2p ({f2p_pct:.1f}%), {p2p_sum}/{p2p_total} p2p")
 print(f"Saved results to {results_file}")

@@ -15,16 +15,96 @@ See [`EXPERIMENT`](./EXPERIMENT) for the full experimental philosophy.
 - An OpenCode API key in `~/.config/opencode/opencode.json` or
   `OPENCODE_ACCESS_TOKEN`
 
-## The Three Control Approaches
+## Approaches Tested
 
-| Exp | Config | Description | How the loop is enforced |
-|---|---|---|---|
-| **Exp1** — Vanilla | `opencode-deepseek.yaml` | Default OpenCode agent, no custom prompt. Baseline. | Nothing — agent decides when to test |
-| **Exp2a** — Structured prompt | `opencode-deepseek-exp2-prompt.yaml` | System prompt telling the agent to implement → test → fix → repeat | **Prompt** — agent is asked politely; can still ignore |
-| **Exp2b** — Orchestrator | `opencode-deepseek-exp2-orchestrator.yaml` | Role-split agents: coder (edit-only), tester (test-only), fixer (edit+test), orchestrator (delegates) | **Permissions** — coder can't run tests, tester can't edit, orchestrator can't do either |
+| Exp | Config | Description | How the loop is enforced | Result |
+|---|---|---|---|---|
+| **Exp1** — Vanilla | `opencode-deepseek.yaml` | Default agent, no custom prompt. Baseline. | Nothing — agent decides when to test | Baseline |
+| **Exp2a** — Structured prompt | `opencode-deepseek-exp2-prompt.yaml` | System prompt: implement → test → fix → repeat | **Prompt** — agent is asked politely; can still ignore | ❌ Agent ignored the loop entirely |
+| **Exp2b** — Orchestrator | `opencode-deepseek-exp2-orchestrator.yaml` | Role-split agents: coder (edit-only), tester (test-only), fixer (edit+test), orchestrator (delegates) | **Permissions** — coder can't run tests, tester can't edit | ✅ Delegation enforced |
+| **Exp3** — Docs-first prompt | `opencode-deepseek-exp3-docs-dummy.yaml` | Prompt tells agent to document → plan → implement in phases | **Prompt** — same as Exp2a but with doc-writing steps | ❌ Agent skipped docs entirely |
+| **Exp3b** — Two-phase (research → implement) | `...-research-dummy.yaml` + `...-implement-dummy.yaml` | Phase 1: research agent (can only write `docs/`). Phase 2: implementation agent with docs pre-populated. | **Permissions** — research agent has `edit: deny` on source, read-only bash; literally cannot write code | ✅ Research agent forced to produce docs |
 
-Each has a `-dummy` variant (e.g. `opencode-deepseek-dummy.yaml`) that uses the
-smaller dummy task for rapid iteration.
+Each has a `-dummy` variant that uses the smaller dummy task for rapid iteration.
+
+## Key Learnings
+
+### Permission-based enforcement > Prompt-based enforcement
+
+Exp2a and Exp3 both used structured prompts that the agent **ignored entirely**.
+The agent went straight to implementation as if the prompt wasn't there.
+
+Exp2b and Exp3b used **open code permissions** (editing paths, bash command
+allowlists) to structurally prevent the agent from doing the wrong thing:
+
+- `edit: {"*": "deny", "docs/*": "allow"}` — agent physically cannot edit source files
+- `bash: {"*": "deny", "git *": "allow", "ls *": "allow", ...}` — agent cannot run tests or write files via shell
+- `task: deny` — agent cannot spawn subagents
+
+The edit permission patterns match against **relative paths** from the worktree
+(e.g. `/app/docs/plan.md` → `docs/plan.md`), so `"docs/*"` correctly allows only
+the docs directory.
+
+### The Two-Phase Pattern (Exp3b)
+
+Exp3b enforces a research-first workflow by running two sequential Pier trials:
+
+1. **Phase 1 — Research**: An agent with severely restricted permissions
+   (no source edits, no test execution, no subagents). It can only read the
+   codebase and write files to `docs/`. It commits the docs so they appear
+   in `model.patch`.
+
+2. **Phase 2 — Implementation**: A standard (vanilla) agent that starts with
+   the docs pre-populated in its Docker image. The docs are part of the
+   initial git commit, so the agent sees them as part of the task.
+
+The wrapper script (`experiments/run-exp3b.py`):
+- Creates a temp copy of the task
+- Modifies `pre_artifacts.sh` to auto-commit uncommitted changes
+- Runs Phase 1, extracts docs from `model.patch`
+- Places docs in the task's `environment/` directory (so they're included
+  when Pier copies `environment/` to the Docker build context)
+- Modifies the Dockerfile to `COPY docs/ /app/docs/`
+- Runs Phase 2 on the modified task copy
+
+### Costs on the Dummy Task (9 F2P, 7 P2P)
+
+| Experiment | Input tokens | Output tokens | Score | Notes |
+|---|---|---|---|---|
+| Exp1 — vanilla | 181K | 3.5K | 9/9 | Baseline |
+| Exp2a — structured prompt | 314K | 5.2K | 9/9 | Prompt ignored |
+| Exp2b — orchestrator | 568K | — | 9/9 | Most expensive; delegation overhead |
+| Exp3 — docs prompt | 363K | 5.3K | 9/9 | Prompt ignored |
+| Exp3b Phase 1 — research | 222K | 6.3K | — | Produced 335 lines of docs |
+| Exp3b Phase 2 — impl w/ docs | 245K | 3.6K | 9/9 | Docs pre-populated |
+| Exp3b combined | 467K | 9.9K | 9/9 | Two trials vs one |
+
+On the dummy task all approaches score 9/9 (ceiling). The key differentiators
+are: (1) whether the approach actually enforces its intended structure, and
+(2) token cost. The real test will be on harder tasks where documentation
+quality affects success.
+
+### Research Agent Output Quality
+
+The Exp3b research agent (Phase 1) produced genuinely useful documentation:
+
+- **repository-analysis.md** (125 lines): Architecture diagram, data structures,
+  file-by-file breakdown, 5 identified risks, two-pass resolution algorithm
+- **plan.md** (210 lines): Step-by-step implementation plan with detailed code
+  snippets, affected files, and verification methods
+
+This is in contrast to Exp3 where the agent was asked to write docs but
+refused to do so — the structural enforcement (can't edit source, can't run
+tests) left the agent with no other way to make progress.
+
+### Build Context Quirk
+
+The task's `environment/` directory uses a **symlink** `src -> ../src` to
+include the source code. Pier copies `environment/` to the Docker build
+context via `shutil.copytree(symlinks=False)`, which follows the symlink
+and materializes the source files. Any files that an experiment needs in
+the build context must be placed **inside** `environment/`, not at the task
+root.
 
 ## Task Types
 
@@ -44,7 +124,7 @@ pier run --config pier-configs/opencode-deepseek.yaml \
 
 ### Dummy Task
 
-`deep-swe/tasks/dummy-adaptix-alias/` — a small 3-file package with 9 f2p tests
+`deep-swe/tasks/dummy-adaptix-alias/` — a small adaptix package with 9 f2p tests
 and 7 p2p tests. Takes ~2-5 minutes per run. Use this for quick iteration on
 control loop changes:
 
@@ -71,9 +151,12 @@ f2p tests run in a separate verifier container that the agent never sees.
 # Run Exp2b (orchestrator) on the same task
 ./experiments/run-task.sh opencode-deepseek-exp2-orchestrator-dummy \
   deep-swe/tasks/dummy-adaptix-alias 1
+
+# Run Exp3b (two-phase research → implement)
+python3 experiments/run-exp3b.py
 ```
 
-Each run:
+Each single-phase run:
 1. Builds Docker images, runs the agent, runs the verifier
 2. Outputs to `jobs/YYYY-MM-DD__HH-MM-SS/`
 3. Appends results to `experiments/results.json`
@@ -102,7 +185,7 @@ Each result entry records:
 3. **Check results** in `jobs/` and `experiments/results.json`
 4. If the change works, **run on a real task** to validate
 
-### Adding a New Control Approach
+### Adding a New Agent Configuration
 
 Copy an existing config and change the `agent` / `opencode_config` section:
 
@@ -117,15 +200,45 @@ agents:
         agent:
           my-agent-name:
             mode: primary
+            permission:
+              edit:
+                "*": "deny"
+                "docs/*": "allow"
+              bash:
+                "*": "deny"
+                "git *": "allow"
+                "ls *": "allow"
+                "grep *": "allow"
+                "mkdir *": "allow"
+                "pwd": "allow"
             prompt: |
-              Your custom control instructions here...
-          # Subagents go here if using orchestrator mode
+              Your custom instructions here...
 ```
 
 Then run it:
 ```bash
 ./experiments/run-task.sh my-new-approach deep-swe/tasks/dummy-adaptix-alias 1
 ```
+
+### Adding a Two-Phase Experiment
+
+For a research → implement workflow, create two configs and a wrapper:
+
+1. **Research config**: Restricted permissions (source edits denied, bash read-only)
+2. **Implement config**: Standard agent
+3. **Wrapper script**: Runs Phase 1, extracts docs from `model.patch`, places them
+   in the task's `environment/docs/`, modifies Dockerfile to `COPY docs/`, runs Phase 2
+
+Use `experiments/run-exp3b.py` as a template.
+
+### Testing Permission Configurations
+
+To test if a permission block works correctly:
+1. Run the config on the dummy task
+2. Check `agent/trajectory.json` to see which tools were used
+3. For research agents: verify no edit/write calls to source files
+4. For tester agents: verify no edit calls at all
+5. Use `n_attempts: 1` for quick feedback
 
 ## Output Structure
 
@@ -138,10 +251,13 @@ jobs/
     └── <task-name>__<trial-id>/        # Single trial
         ├── result.json                 # Trial results (f2p, p2p, reward)
         ├── trial.log                   # Trial execution log
+        ├── exception.txt               # Stack trace if trial crashed
         ├── agent/
         │   ├── opencode.txt            # Raw OpenCode event stream (JSON lines)
         │   ├── trajectory.json         # Step-by-step tool call history
         │   └── setup/                  # Agent environment setup
+        ├── artifacts/
+        │   └── model.patch             # Git diff of agent's changes
         └── verifier/                   # Hidden test runner output
 ```
 
@@ -160,10 +276,13 @@ cat jobs/<job>/<trial>/agent/trajectory.json | jq '.[] | {step, tool, input, out
 | `opencode-deepseek-exp2-prompt-dummy.yaml` | Exp2a-dummy | Structured prompt | Same for dummy task |
 | `opencode-deepseek-exp2-orchestrator.yaml` | Exp2b | Orchestrator | Subagent role split |
 | `opencode-deepseek-exp2-orchestrator-dummy.yaml` | Exp2b-dummy | Orchestrator | Same for dummy task |
+| `opencode-deepseek-exp3-docs-dummy.yaml` | Exp3 | Docs-first prompt | Prompt-only; agent ignored |
+| `opencode-deepseek-exp3b-research-dummy.yaml` | Exp3b Phase 1 | Research (perm-locked) | Can only write `docs/` |
+| `opencode-deepseek-exp3b-implement-dummy.yaml` | Exp3b Phase 2 | Vanilla implementation | Docs pre-populated in image |
 | `opencode-deepseek-exp2.yaml` | — | — | Deprecated (use exp2-prompt) |
 
 Real task configs allocate 4 CPUs / 16 GB RAM / 7200s timeout per trial.
-Dummy configs use 1 CPU / 512 MB / 1200s.
+Dummy configs use 1 CPU / 512 MB / 600s.
 
 ## Troubleshooting
 
@@ -174,3 +293,9 @@ Dummy configs use 1 CPU / 512 MB / 1200s.
 - **Computer sleep pauses Docker**: Keep the machine awake during long runs.
 - **Puzzling agent behavior**: Check `agent/trajectory.json` for the full
   step-by-step tool call history.
+- **"docs/ not found" during Docker build**: Files in the task root don't
+  automatically appear in the build context. Place them inside `environment/`
+  or use the `environment/src -> ../src` symlink pattern.
+- **save_results.py crashes**: The script expects `verifier_result` to be a
+  dict, but it's `null` when the verifier is disabled. Recent versions handle
+  this gracefully.
