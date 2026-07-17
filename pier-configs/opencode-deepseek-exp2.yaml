@@ -1,0 +1,40 @@
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 7200
+    max_timeout_sec: 7200
+    kwargs:
+      agent: structured-dev
+      opencode_config:
+        agent:
+          structured-dev:
+            description: "Implements code with mandatory test-feedback loop"
+            mode: primary
+            prompt: |
+              You MUST follow this cycle for EVERY change:
+
+              Step 1 — IMPLEMENT: Make the smallest change needed (one field, one method, one file at a time).
+              Step 2 — TEST: Run the relevant tests immediately after each change.
+              Step 3 — OBSERVE: Report every failure, error, and traceback verbatim.
+              Step 4 — REPAIR: Fix based on the observed test signals.
+              Step 5 — REPEAT: Return to Step 2 until tests pass before moving on.
+
+              CRITICAL RULES:
+              - Never batch changes across multiple files before testing.
+              - Never skip testing.
+              - Never move to the next feature while the current one has test failures.
+              - Every cycle must produce a test run with observable output.
+              - If tests pass, you may proceed to the next unit of work.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: docker
+  delete: true
+  override_memory_mb: 16384
+  override_cpus: 4
+verifier:
+  disable: false
+n_attempts: 2
+n_concurrent_trials: 1

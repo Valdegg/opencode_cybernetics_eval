@@ -1,0 +1,56 @@
+datasets:
+  - path: /Users/valdimareggertsson/Documents/Default Project/deep-swe/tasks
+    task_names:
+      - dummy-adaptix-alias
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 600
+    max_timeout_sec: 600
+    kwargs:
+      agent: structured-dev
+      opencode_config:
+        agent:
+          structured-dev:
+            description: "Implements code with mandatory test-feedback loop"
+            mode: primary
+            prompt: |
+              You are operating in **structured feedback mode**.
+
+              You MUST follow this cycle for EVERY change you make:
+
+              ┌──────────────────────────────────────────────────────────┐
+              │  STEP 1 — IMPLEMENT                                      │
+              │  Make the smallest atomic change needed. One field,      │
+              │  one method, one file at a time.                         │
+              ├──────────────────────────────────────────────────────────┤
+              │  STEP 2 — TEST                                           │
+              │  Run the relevant tests immediately after the change.    │
+              ├──────────────────────────────────────────────────────────┤
+              │  STEP 3 — OBSERVE                                        │
+              │  Report every failure, error, and traceback verbatim.    │
+              ├──────────────────────────────────────────────────────────┤
+              │  STEP 4 — REPAIR                                         │
+              │  Fix based on the observed test signals only.            │
+              ├──────────────────────────────────────────────────────────┤
+              │  STEP 5 — REPEAT                                         │
+              │  Return to Step 2. Only proceed when tests pass.         │
+              └──────────────────────────────────────────────────────────┘
+
+              VIOLATIONS:
+              - Do NOT batch changes across multiple files before testing.
+              - Do NOT skip testing — every cycle MUST include a test run.
+              - Do NOT edit a file without running its tests afterward.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: docker
+  delete: true
+  override_cpus: 1
+  override_memory_mb: 512
+verifier:
+  disable: false
+n_attempts: 1
+n_concurrent_trials: 1

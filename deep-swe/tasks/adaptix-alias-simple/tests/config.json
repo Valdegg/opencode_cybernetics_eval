@@ -1,0 +1,18 @@
+{
+  "base_commit": "a691069fcadf9131e5f7a5a130a022dc678f3e1d",
+  "p2p_node_ids": [
+    "test_p2p_basic.test_name_mapping_exists",
+    "test_p2p_basic.test_simple_rename",
+    "test_p2p_basic.test_unmapped_keys_preserved"
+  ],
+  "f2p_node_ids": [
+    "test_aliases_simple.test_alias_resolution",
+    "test_aliases_simple.test_primary_key_preferred",
+    "test_aliases_simple.test_alias_conflict_error"
+  ],
+  "grade": {
+    "format": "junit",
+    "tool_label": "pytest",
+    "reports": ["/logs/verifier/base.xml", "/logs/verifier/new.xml"]
+  }
+}

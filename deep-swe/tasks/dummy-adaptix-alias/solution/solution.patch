@@ -1,0 +1,82 @@
+diff --git a/src/adaptix/morphing/name_layout/base.py b/src/adaptix/morphing/name_layout/base.py
+index 2137d32..1824813 100644
+--- a/src/adaptix/morphing/name_layout/base.py
++++ b/src/adaptix/morphing/name_layout/base.py
+@@ -1,15 +1,22 @@
+ from dataclasses import dataclass, field
+-from typing import Optional
++from typing import Optional, Union
+ from .mapping import NameMapping
+ 
+ 
+ @dataclass
+ class MappingConfig:
+     map_def: dict[str, str] = field(default_factory=dict)
++    aliases: dict[str, Union[str, list[str]]] = field(default_factory=dict)
+     name_style: Optional[str] = None
+ 
+     def build_mapping(self) -> NameMapping:
+         nm = NameMapping()
+         for source, target in self.map_def.items():
+             nm.add_map(source, target)
++        for field_id, alias_list in self.aliases.items():
++            if isinstance(alias_list, str):
++                nm.add_alias(field_id, alias_list)
++            else:
++                for alias in alias_list:
++                    nm.add_alias(field_id, alias)
+         return nm
+diff --git a/src/adaptix/morphing/name_layout/component.py b/src/adaptix/morphing/name_layout/component.py
+index 6536266..98118a7 100644
+--- a/src/adaptix/morphing/name_layout/component.py
++++ b/src/adaptix/morphing/name_layout/component.py
+@@ -1,13 +1,16 @@
++from typing import Union
+ from .base import MappingConfig
+ from .mapping import NameMapping
+ 
+ 
+ def name_mapping(
+     map: dict[str, str] | None = None,
++    aliases: dict[str, Union[str, list[str]]] | None = None,
+     name_style: str | None = None,
+ ) -> MappingConfig:
+     return MappingConfig(
+         map_def=map or {},
++        aliases=aliases or {},
+         name_style=name_style,
+     )
+ 
+diff --git a/src/adaptix/morphing/name_layout/mapping.py b/src/adaptix/morphing/name_layout/mapping.py
+index 8425f59..31b2d5a 100644
+--- a/src/adaptix/morphing/name_layout/mapping.py
++++ b/src/adaptix/morphing/name_layout/mapping.py
+@@ -4,12 +4,27 @@ from .errors import AliasConflictError
+ class NameMapping:
+     def __init__(self):
+         self._map = {}
++        self._aliases = {}
+ 
+     def add_map(self, source: str, target: str):
+         self._map[source] = target
+ 
++    def add_alias(self, field_id: str, alias: str):
++        if field_id not in self._map.values():
++            raise AliasConflictError(f"Unknown field: {field_id}")
++        if alias in self._map:
++            raise AliasConflictError(f"Alias conflicts with primary key: {alias}")
++        self._aliases[alias] = field_id
++
+     def resolve(self, data: dict) -> dict:
+         result = {}
+         for key, value in data.items():
+-            result[self._map.get(key, key)] = value
++            if key in self._map:
++                result[self._map[key]] = value
++            elif key in self._aliases:
++                resolved = self._aliases[key]
++                if resolved not in result:
++                    result[resolved] = value
++            else:
++                result[key] = value
+         return result

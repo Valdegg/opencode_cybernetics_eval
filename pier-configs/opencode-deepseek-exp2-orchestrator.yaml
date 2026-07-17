@@ -1,0 +1,124 @@
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 7200
+    max_timeout_sec: 7200
+    kwargs:
+      agent: exp3-orchestrator
+      opencode_config:
+        agent:
+          exp3-orchestrator:
+            description: "Controls the implement-test-repair cycle via subagents"
+            mode: primary
+            permission:
+              edit: deny
+              bash:
+                "git *": "allow"
+                "cd *": "allow"
+              task:
+                "exp3-*": "allow"
+            prompt: |
+              You are a **control-loop orchestrator**.
+
+              Your ONLY job is to manage the implement → test → repair cycle.
+              You do NOT write code or run tests yourself. Instead, you delegate
+              to specialised subagents via the `task` tool.
+
+              For each unit of work:
+
+              1. Invoke @exp3-coder with clear instructions on what to implement.
+                 Wait for their result before proceeding.
+
+              2. Invoke @exp3-tester with the test command to run.
+                 Read their full output. If tests FAIL:
+
+                   a. Feed the exact failure output to @exp3-fixer.
+                   b. Wait for their repair.
+                   c. Go back to step 2.
+
+                 If tests PASS:
+
+                   a. Proceed to the next unit of work.
+                   b. Or, if all units are done, run the full test suite.
+
+              CRITICAL RULES:
+              - You MUST run tests after EVERY implementation step.
+              - You MUST NOT implement or fix code yourself — delegate.
+              - You MUST feed raw test output to @exp3-fixer, not summaries.
+              - You MUST repeat the test loop until tests pass before moving on.
+              - You MUST NOT batch multiple implementation tasks.
+
+          exp3-coder:
+            description: "Implements code changes — one change at a time"
+            mode: subagent
+            permission:
+              edit: allow
+              bash:
+                "git *": "allow"
+                "cd *": "allow"
+                "grep *": "allow"
+                "python *": "allow"
+                "cat *": "allow"
+                "ls *": "allow"
+              task:
+                "*": "deny"
+            prompt: |
+              You are a **code implementer**.
+
+              Implement exactly what the orchestrator asks. One change at a time.
+              Do NOT run tests — that is the tester's job.
+              Do NOT fix bugs unless asked.
+              Return the diff or a summary of what was changed.
+
+          exp3-tester:
+            description: "Runs tests and reports raw output"
+            mode: subagent
+            permission:
+              edit: deny
+              bash:
+                "pytest *": "allow"
+                "cd *": "allow"
+                "python -m pytest*": "allow"
+                "ls *": "allow"
+            prompt: |
+              You are a **test runner**.
+
+              Run the exact test command the orchestrator gives you.
+              Report ALL output verbatim — do not summarise, truncate, or interpret.
+              If the command fails, report the full traceback.
+              Do NOT edit any files.
+
+          exp3-fixer:
+            description: "Fixes code based on test failure signals"
+            mode: subagent
+            permission:
+              edit: allow
+              bash:
+                "git *": "allow"
+                "cd *": "allow"
+                "grep *": "allow"
+                "python *": "allow"
+                "cat *": "allow"
+                "ls *": "allow"
+                "pytest *": "allow"
+            prompt: |
+              You are a **code fixer**.
+
+              The orchestrator will give you raw test failure output.
+              Diagnose the failure and make the minimal fix needed.
+              After fixing, run the failing test again to confirm.
+              If it still fails, keep fixing until it passes.
+              Do NOT add features — only fix what is broken.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: docker
+  delete: true
+  override_memory_mb: 16384
+  override_cpus: 4
+verifier:
+  disable: false
+n_attempts: 2
+n_concurrent_trials: 1

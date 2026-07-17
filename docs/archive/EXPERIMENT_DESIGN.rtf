@@ -1,0 +1,411 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Bold;\f1\froman\fcharset0 Times-Roman;\f2\fnil\fcharset0 .SFNS-Regular;
+\f3\fmodern\fcharset0 Courier;\f4\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid3}
+{\list\listtemplateid4\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid301\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid4}
+{\list\listtemplateid5\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid401\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid5}
+{\list\listtemplateid6\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid501\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid6}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}{\listoverride\listid5\listoverridecount0\ls5}{\listoverride\listid6\listoverridecount0\ls6}}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sa321\partightenfactor0
+
+\f0\b\fs48 \cf0 \expnd0\expndtw0\kerning0
+Experimental Design\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0\fs24 \cf0 All experiments use:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same underlying language model\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same benchmark tasks\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same repository snapshots\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same tool permissions\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same runtime limits\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same evaluation methodology\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 The independent variable is 
+\f0\b not
+\f1\b0  the model, but the 
+\f0\b control architecture
+\f1\b0  imposed around it.\
+Modern coding agents already exhibit behaviours such as planning, testing, reflection, and iterative repair. These behaviours, however, are largely discretionary\'97the agent may choose when and how to perform them. The purpose of this study is not to determine whether the model is capable of these behaviours, but whether 
+\f0\b explicitly structuring them as part of the control loop
+\f1\b0  produces measurable improvements.\
+The experiments therefore follow a cumulative design. Each experiment retains the mechanisms introduced previously while adding one additional cybernetic signal or control mechanism. In each case, the newly introduced mechanism becomes an explicit and repeatable part of the agent\'92s operating procedure rather than an optional behaviour.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 1 \'97 Vanilla Agent\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  
+\f0\b Implicit feedback controller
+\f1\b0 \
+The agent receives the benchmark issue and repository state and is allowed to operate using its default behaviour.\
+The agent may choose to inspect the repository, create plans, run tests, analyse failures, or revise its implementation. No particular workflow is prescribed.\
+This experiment establishes the baseline behaviour of the underlying coding agent.\
+\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f2 \cf0 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 2 \'97 Structured Test Feedback\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  
+\f0\b Explicit negative-feedback controller
+\f1\b0 \
+The first explicit control mechanism is introduced.\
+Rather than leaving testing and repair to the agent\'92s discretion, every implementation cycle must follow a structured feedback loop.\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs26 \cf0 Implement\
+    
+\f4 \uc0\u8595 
+\f3 \
+Run relevant tests\
+    
+\f4 \uc0\u8595 
+\f3 \
+Observe failures\
+    
+\f4 \uc0\u8595 
+\f3 \
+Repair\
+    
+\f4 \uc0\u8595 
+\f3 \
+Repeat\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs24 \cf0 Compiler errors, test failures, lint results, and other execution outcomes become mandatory error signals within the controller.\
+The experiment evaluates whether explicitly enforcing negative feedback improves performance over the agent\'92s default behaviour.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 3 \'97 Documentation and Planning\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  
+\f0\b Improved state estimation
+\f1\b0 \
+The structured test-feedback loop is retained.\
+Before implementation begins, the controller is now required to construct an explicit internal model of the task.\
+The agent must:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls2\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+inspect the repository\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+identify architectural conventions\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+clarify requirements\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+identify assumptions and constraints\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+define acceptance criteria\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+produce a high-level implementation plan\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 The objective is not to teach the model how to plan, but to require planning as a distinct stage of the control loop.\
+This experiment evaluates whether explicit state estimation improves subsequent regulation.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 4 \'97 Step-Level Verification\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  
+\f0\b High-frequency local regulation
+\f1\b0 \
+Implementation is now explicitly organised as a sequence of locally verified steps.\
+For each planned step the controller must:\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs26 \cf0 Select step\
+      
+\f4 \uc0\u8595 
+\f3 \
+Implement\
+      
+\f4 \uc0\u8595 
+\f3 \
+Verify\
+      
+\f4 \uc0\u8595 
+\f3 \
+Repair\
+      
+\f4 \uc0\u8595 
+\f3 \
+Next step\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs24 \cf0 Verification includes:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls3\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+focused tests\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+regression tests\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+architectural consistency\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+code conciseness\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+performance where applicable\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 Only after a step satisfies its local verification criteria may the controller proceed to the next.\
+This experiment evaluates whether enforcing high-frequency local feedback produces better engineering outcomes than verifying opportunistically.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 5 \'97 Adaptive Learning\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  
+\f0\b Adaptive controller with memory
+\f1\b0 \
+The controller now explicitly incorporates memory into the loop.\
+After every verified step it records:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls4\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+failed approaches\
+\ls4\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+incorrect assumptions\
+\ls4\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+discovered constraints\
+\ls4\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+architectural observations\
+\ls4\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+performance findings\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 These observations are then used to refine the remaining implementation plan.\
+The objective is not simply to allow the model to reflect, but to require that observations become persistent signals influencing future decisions.\
+This experiment evaluates whether explicit adaptive control improves performance.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 6 \'97 Independent Reviewer\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  
+\f0\b Independent observation
+\f1\b0 \
+Until this point every observation has been produced by the implementing controller itself.\
+This experiment introduces a dedicated reviewer subagent.\
+After each completed step, the reviewer independently evaluates:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls5\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+correctness\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+requirement coverage\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+architectural consistency\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+maintainability\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+edge cases\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+performance risks\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 The reviewer does not modify the implementation directly.\
+Instead, it produces an independent review signal that must be addressed before implementation continues.\
+The experiment evaluates whether explicitly introducing an independent observer improves convergence beyond self-regulation alone.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 7 \'97 Final System Convergence\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  
+\f0\b Hierarchical regulation
+\f1\b0 \
+The previous experiments regulate individual implementation steps.\
+The final experiment extends the same structured control architecture to the complete software system.\
+Once all implementation steps have completed, the controller performs an explicit convergence loop over the integrated system.\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs26 \cf0 Complete system\
+        
+\f4 \uc0\u8595 
+\f3 \
+Global verification\
+        
+\f4 \uc0\u8595 
+\f3 \
+Independent review\
+        
+\f4 \uc0\u8595 
+\f3 \
+Repair\
+        
+\f4 \uc0\u8595 
+\f3 \
+Repeat until convergence\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs24 \cf0 Rather than asking whether each individual implementation step is satisfactory, the controller now evaluates the behaviour of the complete system against its original objectives.\
+The convergence loop explicitly incorporates the mechanisms introduced previously. The accumulated learnings inform the final repairs, while the independent reviewer evaluates the integrated system rather than individual changes.\
+Global verification includes:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls6\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+complete test suites\
+\ls6\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+end-to-end behaviour\
+\ls6\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+architectural coherence\
+\ls6\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+cross-component consistency\
+\ls6\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+documentation consistency\
+\ls6\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+requirement completeness\
+\ls6\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+performance validation\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 This experiment evaluates whether explicitly introducing hierarchical regulation improves system-level quality beyond local verification alone.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa321\partightenfactor0
+
+\f0\b\fs48 \cf0 Experimental Progression\
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrt\brdrs\brdrw20\brdrcf2 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth2150\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth5798\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth6211\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\qc\partightenfactor0
+
+\fs24 \cf0 Experiment\cell 
+\pard\intbl\itap1\pardeftab720\sa240\qc\partightenfactor0
+\cf0 Control evolution\cell 
+\pard\intbl\itap1\pardeftab720\sa240\qc\partightenfactor0
+\cf0 Explicitly enforced mechanism\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth2150\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth5798\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth6211\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+
+\f1\b0 \cf0 1\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Implicit feedback controller\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Default agent behaviour\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth2150\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth5798\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth6211\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 2\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Explicit negative-feedback controller\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Structured test\'96repair loop\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth2150\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth5798\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth6211\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 3\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Improved state estimation\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Documentation and planning stage\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth2150\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth5798\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth6211\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 4\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 High-frequency local regulation\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Step-level verification gates\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth2150\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth5798\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth6211\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 5\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Adaptive controller with memory\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Persistent learnings and plan refinement\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth2150\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth5798\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth6211\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 6\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Independent observation\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Dedicated reviewer subagent\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrb\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth2150\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth5798\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth6211\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 7\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Hierarchical regulation\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Whole-system convergence loop\cell \lastrow\row
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 Each experiment introduces one additional, explicitly enforced cybernetic mechanism while keeping the underlying language model unchanged.\
+The study therefore evaluates whether progressively structuring the control loop\'97and the signals available within it\'97improves autonomous software engineering beyond the agent\'92s default behaviour.\
+}

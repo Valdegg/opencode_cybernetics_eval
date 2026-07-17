@@ -1,0 +1,2 @@
+class AliasConflictError(Exception):
+    pass

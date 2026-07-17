@@ -1,0 +1,327 @@
+Cybernetic Loop Engineering Experiment
+Objective
+This project explores whether improvements in autonomous software engineering come primarily from better control loops rather than better language models.
+The experiment is inspired by cybernetics, where intelligent behaviour emerges through feedback, regulation and adaptation. Rather than comparing different models, we will keep the model constant and progressively add cybernetic control mechanisms around it.
+The central hypothesis is:
+Engineering the feedback loop surrounding an AI coding agent will improve software engineering performance more than prompt engineering alone.
+
+⸻
+
+Benchmark
+We will use SWE-bench Verified with an initial subset of approximately 20–30 tasks.
+Each task consists of:
+	•	a real GitHub issue
+	•	a repository snapshot
+	•	a Docker evaluation environment
+	•	hidden evaluation tests
+Every experimental configuration will run against exactly the same benchmark subset.
+The benchmark should remain fixed throughout the experiment.
+
+⸻
+
+Success Metrics
+We intentionally keep evaluation simple.
+1. Task Success Rate
+Percentage of benchmark tasks successfully solved.
+Primary metric.
+
+⸻
+
+2. Cost
+Total model usage (tokens/API cost).
+Measures efficiency.
+
+⸻
+
+3. Execution Time
+Wall-clock runtime from start until completion.
+Measures practical usability.
+
+⸻
+
+Experimental Philosophy
+The model remains constant throughout the experiment.
+Only the controller changes.
+We are evaluating control architectures, not language models.
+Each experiment introduces one additional cybernetic principle.
+
+⸻
+
+Phase 1 — Vanilla Agent
+The baseline is an unmodified OpenCode agent.
+Workflow:
+Issue
+↓
+
+Agent
+
+↓
+
+Solution
+No imposed workflow.
+No planning.
+No verification.
+No review.
+No convergence loop.
+Purpose:
+Establish baseline performance.
+
+⸻
+
+Phase 2 — Feedback Only
+Introduce the smallest possible cybernetic controller.
+Workflow:
+Implement
+
+↓
+
+Run tests
+
+↓
+
+Repair
+
+↓
+
+Repeat until tests pass
+Cybernetic principle:
+Negative Feedback (Norbert Wiener)
+Question:
+How much improvement comes from simple error correction?
+
+⸻
+
+Phase 3 — Documentation First
+Before implementation the agent:
+	•	researches the repository
+	•	studies existing architecture
+	•	documents requirements
+	•	identifies assumptions
+	•	defines constraints
+Outputs:
+	•	requirements
+	•	assumptions
+	•	implementation notes
+Cybernetic principle:
+Good Regulator Theorem
+Question:
+Does building an internal model before acting improve regulation?
+
+⸻
+
+Phase 4 — Planning
+Generate a high-level implementation plan.
+Each step should include:
+	•	objective
+	•	expected outcome
+	•	affected components
+	•	acceptance criteria
+	•	proposed tests
+The plan becomes the working document for implementation.
+
+⸻
+
+Phase 5 — Step-Level Development Loop
+Each implementation step follows the same control loop.
+Review current plan
+
+↓
+
+Write failing test
+
+↓
+
+Implement minimum solution
+
+↓
+
+Run tests
+
+↓
+
+Static analysis
+
+↓
+
+Self review
+
+↓
+
+Performance check (where relevant)
+
+↓
+
+Record learnings
+
+↓
+
+Refine remaining plan
+
+↓
+
+Next step
+Cybernetic principles:
+	•	Negative Feedback
+	•	Adaptive Control
+Questions:
+	•	Does local verification prevent downstream failures?
+	•	Does continuous learning improve subsequent implementation?
+
+⸻
+
+Phase 6 — Independent Reviewer
+Introduce a second agent whose sole responsibility is evaluation.
+The reviewer should inspect:
+	•	correctness
+	•	architectural consistency
+	•	code simplicity
+	•	duplication
+	•	maintainability
+	•	potential regressions
+The reviewer should not implement code directly.
+The implementation agent remains responsible for repairs.
+Cybernetic principle:
+Independent Observation
+Question:
+Does an independent controller detect failures missed by self-review?
+
+⸻
+
+Phase 7 — Whole-System Convergence
+Once every implementation step is complete, perform a final system-level loop.
+Run:
+	•	complete test suite
+	•	integration tests
+	•	performance benchmarks
+	•	architectural review
+	•	documentation review
+If issues are found:
+Identify issue
+
+↓
+
+Repair
+
+↓
+
+Regression tests
+
+↓
+
+Re-evaluate
+
+↓
+
+Repeat until convergence
+Cybernetic principle:
+Hierarchical Control
+Question:
+Does global regulation improve overall system quality beyond locally correct implementation?
+
+⸻
+
+Full Cybernetic Loop
+The complete controller becomes:
+Research
+
+↓
+
+Requirements
+
+↓
+
+Plan
+
+↓
+
+For each implementation step
+
+    Write failing tests
+
+↓
+
+    Implement
+
+↓
+
+    Verify
+
+↓
+
+    Self review
+
+↓
+
+    Performance check
+
+↓
+
+    Record learnings
+
+↓
+
+    Refine remaining plan
+
+↓
+
+Independent review
+
+↓
+
+Repeat for remaining steps
+
+↓
+
+Whole-system convergence
+
+↓
+
+Completion
+
+⸻
+
+Future Ablation Studies
+Once the complete controller is working, individual feedback mechanisms can be removed.
+Configuration
+Cybernetic Principle
+Vanilla
+Baseline
+Feedback Only
+Negative Feedback
+No Documentation
+Good Regulator
+No Step Verification
+Negative Feedback
+No Self Review
+Reflection
+No Independent Reviewer
+Independent Observation
+No Plan Refinement
+Adaptive Control
+No Whole-System Convergence
+Hierarchical Control
+Full Controller
+All principles
+This allows us to measure the contribution of each control mechanism independently.
+
+⸻
+
+Implementation Architecture
+The controller will be composed of specialised OpenCode agents.
+Initial agent set:
+	•	Director
+	•	Research
+	•	Planner
+	•	Builder
+	•	Verifier
+	•	Reviewer
+The Director owns the control loop.
+Each specialised agent performs one task before returning control.
+This separation allows individual feedback channels to be enabled or disabled without modifying the overall architecture.
+
+⸻
+
+Expected Outcome
+The goal of this project is not to build a better coding agent.
+The goal is to understand which cybernetic control mechanisms produce measurable improvements in autonomous software engineering.
+If successful, the result will be a practical demonstration that agent performance depends not only on model capability, but also on the quality of the feedback systems that surround the model.

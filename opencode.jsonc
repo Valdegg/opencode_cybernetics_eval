@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "build": {
+      "mode": "primary",
+      "model": "opencode/deepseek-v4-flash-free",
+      "temperature": 0.3,
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+    "plan": {
+      "mode": "primary",
+      "model": "opencode/deepseek-v4-flash-free",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+    "deep-swe-researcher": {
+      "description": "Analyzes DeepSWE tasks deeply before implementing",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4-flash-free",
+      "temperature": 0.1,
+      "prompt": "You are a codebase researcher. Given a DeepSWE task instruction, you analyze the repository structure, understand the codebase, and produce a detailed implementation plan. Do NOT make any edits. Focus on: 1) Understanding the relevant code sections, 2) Identifying files that need changes, 3) Producing a step-by-step plan.",
+      "permission": {
+        "edit": "deny",
+        "bash": "allow"
+      }
+    },
+    "deep-swe-implementer": {
+      "description": "Implements DeepSWE task solutions based on research plans",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4-flash-free",
+      "temperature": 0.3,
+      "prompt": "You are a focused implementer. Given a DeepSWE task instruction and a research plan, you implement the solution. Follow the plan precisely. Write clean, idiomatic code. Commit all changes when done.",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+    "deep-swe-reviewer": {
+      "description": "Reviews DeepSWE task solutions for correctness",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4-flash-free",
+      "temperature": 0.1,
+      "prompt": "You are a code reviewer specializing in DeepSWE task verification. Review the implementation against the task requirements. Check for: 1) All expected outcomes are met, 2) Edge cases are handled, 3) Code quality and idiomatic style. Do NOT make edits.",
+      "permission": {
+        "edit": "deny",
+        "bash": "allow"
+      }
+    },
+    "deep-swe-fast": {
+      "description": "Fast agent for quick DeepSWE task attempts with minimal iterations",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4-flash-free",
+      "temperature": 0.4,
+      "steps": 10,
+      "prompt": "You are a fast, efficient coding agent working on DeepSWE tasks. Solve the problem in as few steps as possible. Focus on the core requirements. Commit and finish quickly.",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+    "deep-swe-thorough": {
+      "description": "Thorough agent that exhaustively covers edge cases",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4-flash-free",
+      "temperature": 0.2,
+      "prompt": "You are a meticulous engineer. Think deeply about every edge case, every failure mode, and every requirement before writing code. Write comprehensive tests. Consider performance, error handling, and maintainability. This is a DeepSWE task - quality matters.",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    }
+  }
+}
