@@ -139,21 +139,61 @@ f2p tests run in a separate verifier container that the agent never sees.
 
 ## Quick Start: Run and Record Results
 
+### Single Task
+
 ```bash
-# Run Exp1 (vanilla) on the dummy task and save results
+# Run vanilla on one task
+./experiments/run-task.sh opencode-deepseek \
+  deep-swe/tasks/adaptix-name-mapping-aliases 2
+
+# Run on the dummy task (fast, for iteration)
 ./experiments/run-task.sh opencode-deepseek-dummy \
   deep-swe/tasks/dummy-adaptix-alias 1
 
-# Run Exp2a (structured prompt) on the same task
+# Run a specific experiment on the dummy task
 ./experiments/run-task.sh opencode-deepseek-exp2-prompt-dummy \
   deep-swe/tasks/dummy-adaptix-alias 1
-
-# Run Exp2b (orchestrator) on the same task
 ./experiments/run-task.sh opencode-deepseek-exp2-orchestrator-dummy \
   deep-swe/tasks/dummy-adaptix-alias 1
 
 # Run Exp3b (two-phase research → implement)
 python3 experiments/run-exp3b.py
+```
+
+### Batch: Multiple Tasks in One Command
+
+Use a config with `datasets` to run the same agent on multiple tasks
+sequentially:
+
+```bash
+# Vanilla on 3 tasks (dummy + 2 real)
+pier run --config pier-configs/opencode-deepseek-batch.yaml --yes
+```
+
+The batch config (`pier-configs/opencode-deepseek-batch.yaml`) specifies
+the task directory and task names under `datasets`, along with full resource
+allocations (4 CPUs, 16 GB, 7200s timeout, 2 attempts). Tasks run one at a
+time (`n_concurrent_trials: 1`).
+
+To create your own batch run, copy the batch config and change `task_names`:
+
+```yaml
+datasets:
+  - path: /Users/valdimareggertsson/Documents/Default Project/deep-swe/tasks
+    task_names:
+      - adaptix-name-mapping-aliases
+      - adaptix-alias-simple
+      - dummy-adaptix-alias
+```
+
+### Shell Loop (Separate Jobs Per Task)
+
+If you want individual job directories per task (easier to inspect):
+
+```bash
+for task in adaptix-name-mapping-aliases adaptix-alias-simple dummy-adaptix-alias; do
+  ./experiments/run-task.sh opencode-deepseek "deep-swe/tasks/$task" 2
+done
 ```
 
 Each single-phase run:
@@ -279,6 +319,7 @@ cat jobs/<job>/<trial>/agent/trajectory.json | jq '.[] | {step, tool, input, out
 | `opencode-deepseek-exp3-docs-dummy.yaml` | Exp3 | Docs-first prompt | Prompt-only; agent ignored |
 | `opencode-deepseek-exp3b-research-dummy.yaml` | Exp3b Phase 1 | Research (perm-locked) | Can only write `docs/` |
 | `opencode-deepseek-exp3b-implement-dummy.yaml` | Exp3b Phase 2 | Vanilla implementation | Docs pre-populated in image |
+| `opencode-deepseek-batch.yaml` | — | Batch vanilla | Runs vanilla on 3 tasks sequentially |
 | `opencode-deepseek-exp2.yaml` | — | — | Deprecated (use exp2-prompt) |
 
 Real task configs allocate 4 CPUs / 16 GB RAM / 7200s timeout per trial.
