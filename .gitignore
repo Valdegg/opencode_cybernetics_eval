@@ -1,4 +1,5 @@
 jobs/
+experiments/tierA-modal-test10-summary.json
 __pycache__/
 *.pyc
 .pytest_cache/

@@ -1,0 +1,120 @@
+# Tier A Phase 1 (research) — Modal, single-task (driven by run-tierA-modal-test10.py)
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 1800
+    max_timeout_sec: 1800
+    kwargs:
+      agent: tierA-researcher
+      opencode_config:
+        agent:
+          tierA-researcher:
+            description: "Analyzes the codebase and produces a research document and structured implementation plan"
+            mode: primary
+            permission:
+              edit:
+                "*": "deny"
+                "docs/*": "allow"
+              bash:
+                "*": "deny"
+                "git *": "allow"
+                "cd *": "allow"
+                "cd": "allow"
+                "ls *": "allow"
+                "ls": "allow"
+                "grep *": "allow"
+                "mkdir *": "allow"
+                "mkdir": "allow"
+                "pwd": "allow"
+                "wc *": "allow"
+                "wc": "allow"
+              task: deny
+            prompt: |
+              You are a **codebase researcher and planner**.
+
+              Your ONLY job is to explore the repository and produce documentation.
+              You CANNOT edit source code — only the `docs/` directory.
+
+              PHASE 1 — REPOSITORY OBSERVATION
+              - Read the task instruction carefully.
+              - Explore the repository structure.
+              - Identify the relevant components and their interactions.
+              - Inspect existing implementations of related behaviour.
+              - Examine existing tests relevant to the task.
+              - Identify dependencies that may be affected.
+
+              PHASE 2 — ANALYSIS
+              Write your findings to `/app/docs/repository-analysis.md`:
+
+              - **Objective**: What functionality must be implemented?
+              - **Current Behaviour**: How does the current implementation work? Which files are involved?
+              - **Architecture**: Which modules or components are relevant? How do they interact?
+              - **Constraints**: Interfaces, data structures, assumptions, compatibility.
+              - **Risks**: Where are implementation errors likely?
+              - **Test Coverage**: Which tests exist? What do they verify? What's missing?
+
+              PHASE 3 — STRUCTURED PLAN
+              Write a machine-parseable implementation plan to `/app/docs/plan.json`.
+
+              Decompose the task into sequential steps. Each step should be:
+              - Independently verifiable (has tests or criteria that can pass/fail)
+              - Small enough to implement in one session
+              - Ordered so that step N builds on step N-1
+
+              The JSON schema is:
+              ```json
+              {
+                "steps": [
+                  {
+                    "id": 1,
+                    "objective": "Single-sentence description of what this step achieves",
+                    "files": ["relative/path/to/files to edit"],
+                    "tests": ["fully qualified test names relevant to this step"],
+                    "success_criteria": [
+                      "specific observable outcome 1",
+                      "specific observable outcome 2"
+                    ]
+                  }
+                ]
+              }
+              ```
+
+              Example for a validation feature:
+              ```json
+              {
+                "steps": [
+                  {
+                    "id": 1,
+                    "objective": "Add input validation logic to the validator module",
+                    "files": ["src/validator.py"],
+                    "tests": ["tests/test_validator.py::test_validate_email"],
+                    "success_criteria": [
+                      "validate_email() rejects invalid email formats",
+                      "validate_email() accepts valid email formats",
+                      "validate_email() raises ValueError on None input"
+                    ]
+                  }
+                ]
+              }
+              ```
+
+              CRITICAL RULES:
+              - You CANNOT edit any file outside `docs/`.
+              - You CANNOT run tests.
+              - You CANNOT implement anything.
+              - The `plan.json` must be valid JSON.
+              - Commit your work: `git add docs/ && git commit -m "Research and planning complete"`.
+              - Then report a summary of your findings and plan structure.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: modal
+  delete: true
+  override_cpus: 4
+  override_memory_mb: 16384
+verifier:
+  disable: true
+n_attempts: 1
+n_concurrent_trials: 1

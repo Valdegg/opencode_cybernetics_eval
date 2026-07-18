@@ -1,0 +1,44 @@
+# Tier A Phase 2 (implement) — Modal, single-task (driven by run-tierA-modal-test10.py)
+# Reads docs/ (repository-analysis.md + plan.json) prepared by the research agent
+# and implements the plan. Custom prompt lives under an agent block (a top-level
+# opencode_config.prompt is rejected by OpenCode as an unrecognized key).
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 7200
+    max_timeout_sec: 7200
+    kwargs:
+      agent: tierA-implementer
+      opencode_config:
+        agent:
+          tierA-implementer:
+            description: "Implements the plan prepared in docs/ by the research agent"
+            mode: primary
+            prompt: |
+              A repository analysis and implementation plan have been prepared in the
+              `docs/` directory. Before writing any code:
+
+              1. Read `/app/docs/repository-analysis.md` thoroughly.
+              2. Read `/app/docs/plan.json` — it is a machine-parseable plan with a
+                 `steps` array; each step has `objective`, `files`, `tests`, and
+                 `success_criteria[]`.
+              3. Follow the plan exactly. Implement one step at a time. After each
+                 step, verify correctness by running the relevant tests.
+              4. Do not skip ahead or implement steps out of order. If a step's
+                 success criteria are not met, fix it before moving on.
+
+              The plan is your source of truth. If you find an issue with the plan,
+              update `docs/plan.json` and commit the change.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: modal
+  delete: true
+  override_cpus: 4
+  override_memory_mb: 16384
+verifier:
+  disable: false
+n_attempts: 1
+n_concurrent_trials: 1
