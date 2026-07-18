@@ -9,7 +9,7 @@ See [`EXPERIMENT`](./EXPERIMENT) for the original experimental philosophy, and
 [`docs/cybernetics-framing.rtf`](./docs/cybernetics-framing.rtf) for the full
 cybernetic framing.
 
-## Cybenetic Framing
+## Cybernetic Framing
 
 We model autonomous software engineering through the lens of cybernetics.
 The software repository and its execution environment form the **plant**, whose
@@ -27,8 +27,10 @@ and how they influence subsequent decisions. We test three tiers of control loop
 | Tier | Name | Loop script |
 |---|---|---|
 | **A** | Preparation | `explore → document → plan` then implement |
-| **B** | Verified State Transitions | A + per-step `implement → verify → review → persist → repair` loop |
+| **B** | Verified State Transitions | A + per-step `implement → verify → repair → review → persist` loop |
 | **C** | System Convergence | B + whole-system `full_suite → review → repair` convergence loop |
+
+In Tier B, each implementation step is treated as a state transition. The planner defines the desired goal state and its verification before implementation begins, and the orchestrator prevents the agent from proceeding until that transition has been verified.
 
 The base LLM remains fixed throughout. The study investigates how
 progressively enriching the observation architecture influences autonomous
@@ -56,6 +58,12 @@ plan = create_plan(analysis) -> plan.json   # each step has: objective, files,
 
 // 3. Run implement agent (docs baked into Docker image, prompted to read them)
 implement(plan)
+
+// Each step's plan.json might look like:
+//   "goal_state": [
+//     "Alias resolution preserves existing aliases.",
+//     "Existing behaviour remains unchanged."
+//   ]
 
 
 # ─────────────────────────────────────────────
@@ -160,8 +168,7 @@ Key invariants:
 
 These three tiers evolved from a 7-experiment progression that isolated each
 mechanism individually. An earlier version of this document (and the archived
-RTF) describes Exp 1-7 separately. The A/B/C framing collapses them into three
-testable loop configurations:
+RTF) describes Exp 1-7 separately. The A/B/C framing groups the original experiments into three progressively richer control architectures while preserving the underlying experimental progression.
 
 | Early experiments | Feeds into |
 |---|---|
