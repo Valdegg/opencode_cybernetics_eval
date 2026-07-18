@@ -54,9 +54,11 @@ agents:
               Write a machine-parseable plan to `/app/docs/plan.json`.
 
               Decompose the task into sequential steps. Each step should be:
-              - Independently verifiable (has tests or criteria that can pass/fail)
+              - Independently verifiable (has verification mechanisms that can pass/fail)
               - Small enough to implement in one session
               - Ordered so that step N builds on step N-1
+              - New test functions must be listed in `tests_to_create` AND their
+                execution must be listed as a `verification` entry with type `new_test`
 
               The JSON schema is:
               ```json
@@ -64,40 +66,76 @@ agents:
                 "steps": [
                   {
                     "id": 1,
-                    "objective": "Single-sentence description",
+                    "objective": "Single-sentence description of what this step achieves",
                     "files": ["relative/path/to/files to edit"],
-                    "tests": ["fully qualified test names"],
                     "success_criteria": [
-                      "specific observable outcome 1",
-                      "specific observable outcome 2"
+                      "specific observable outcome — the DESIRED STATE after implementation",
+                      "e.g. 'validate_email() rejects None input'"
+                    ],
+                    "verification": [
+                      {
+                        "type": "existing_test | new_test | typecheck | build | execution",
+                        "command": "the exact shell command to run",
+                        "reason": "why this observation is needed"
+                      }
+                    ],
+                    "tests_to_create": [
+                      "list of test function names that the agent must write",
+                      "e.g. test_validate_email_none"
                     ]
                   }
                 ]
               }
               ```
 
-              Example for a feature that adds validation:
+              **Verification types explained:**
+              - `existing_test`: a test that already exists in the codebase. Run it to
+                confirm no regression (the step must not break it).
+                Example: `"command": "python -m pytest tests/test_validator.py::test_existing_validation -x"`
+              - `new_test`: a test that does NOT exist yet. The agent must CREATE this
+                test function as part of the step. Always list the function name in
+                `tests_to_create[]`. The verifier runs it post-patch.
+                Example: `"command": "python -m pytest tests/test_validator.py::test_validate_email_none -x"`
+              - `typecheck`: run a type checker like mypy or pyright.
+                Example: `"command": "python -m pyright src/validator.py"`
+              - `build`: run a build or compile check.
+                Example: `"command": "python -m compileall src/"`
+              - `execution`: any custom runtime check.
+                Example: `"command": "python -c 'from validator import validate; validate(\"test@example.com\")'"`
+
+              Example for a feature that adds validation (step 1 of 2):
               ```json
               {
                 "steps": [
                   {
                     "id": 1,
-                    "objective": "Add input validation logic",
+                    "objective": "Add input validation logic to the validator module",
                     "files": ["src/validator.py"],
-                    "tests": ["tests/test_validator.py::test_validate_email"],
                     "success_criteria": [
-                      "validate_email() rejects invalid emails",
-                      "validate_email() accepts valid emails"
-                    ]
-                  },
-                  {
-                    "id": 2,
-                    "objective": "Wire validation into the API endpoint",
-                    "files": ["src/api.py"],
-                    "tests": ["tests/test_api.py::test_create_user_validation"],
-                    "success_criteria": [
-                      "POST /users returns 400 for invalid input",
-                      "POST /users returns 201 for valid input"
+                      "validate_email() rejects invalid email formats",
+                      "validate_email() accepts valid email formats",
+                      "validate_email() raises ValueError on None input",
+                      "Existing validation behaviors are unchanged"
+                    ],
+                    "verification": [
+                      {
+                        "type": "existing_test",
+                        "command": "python -m pytest tests/test_validator.py::test_existing_validation -x",
+                        "reason": "Ensure existing validation still works (p2p)"
+                      },
+                      {
+                        "type": "new_test",
+                        "command": "python -m pytest tests/test_validator.py::test_validate_email_none -x",
+                        "reason": "New edge case must be handled"
+                      },
+                      {
+                        "type": "typecheck",
+                        "command": "python -m pyright src/validator.py",
+                        "reason": "Type consistency for new function signature"
+                      }
+                    ],
+                    "tests_to_create": [
+                      "test_validate_email_none"
                     ]
                   }
                 ]
@@ -108,7 +146,9 @@ agents:
               - You CANNOT edit any file outside `docs/`.
               - You CANNOT run tests.
               - You CANNOT implement anything.
-              - The `plan.json` must be valid JSON — write it with `json.dumps` equivalent formatting.
+              - The `plan.json` must be valid JSON.
+              - Every test name in `verification[].command` with type `new_test` must
+                appear in `tests_to_create[]`.
               - Commit your work: `git add docs/ && git commit -m "Planning complete"`
         provider:
           opencode:

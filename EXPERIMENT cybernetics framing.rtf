@@ -1,0 +1,375 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Bold;\f1\froman\fcharset0 Times-Roman;\f2\fnil\fcharset0 .SFNS-Regular;
+\f3\fmodern\fcharset0 Courier;\f4\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid3}
+{\list\listtemplateid4\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid301\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid4}
+{\list\listtemplateid5\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid401\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid5}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}{\listoverride\listid5\listoverridecount0\ls5}}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sa321\partightenfactor0
+
+\f0\b\fs48 \cf0 \expnd0\expndtw0\kerning0
+Framing\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0\fs24 \cf0 Loop engineering is often described in terms of prompts, planning, reflection, or agent workflows. We instead frame it through the perspective of cybernetics.\
+In cybernetics, intelligent behaviour emerges from the interaction between a 
+\f0\b controller
+\f1\b0 , the 
+\f0\b system
+\f1\b0  it controls, and the 
+\f0\b observations
+\f1\b0  available to it. A controller does not act directly on the true state of the system. Instead, it receives observations, constructs an internal estimate of the current state, selects an action, observes the consequences of that action, and repeats. Performance therefore depends not only on the quality of the controller itself, but also on the quality, frequency, and diversity of the information available to it.\
+We model autonomous software engineering in the same way. The software repository and its execution environment form the 
+\f0\b plant
+\f1\b0 , whose state consists of the source code, dependencies, documentation, runtime behaviour, and other project artefacts. The LLM acts as the 
+\f0\b controller
+\f1\b0 , selecting actions such as editing code, invoking tools, or terminating execution. Those actions modify the repository, changing the underlying software state.\
+The controller never directly observes this state. Instead, it receives observations through interactions with the development environment: repository files, documentation, compiler output, test results, execution logs, code reviews, and other artefacts. From these observations it constructs an internal representation of the software system before selecting its next action.\
+Viewed through this lens, loop engineering is fundamentally the engineering of the 
+\f0\b observation and feedback architecture
+\f1\b0  surrounding the controller. Rather than changing the controller itself, we modify what information it is required to observe, when those observations occur, and how they influence subsequent decisions.\
+Modern coding agents already possess capabilities such as planning, testing, and self-reflection. However, these behaviours are typically discretionary: the model decides if and when to invoke them. Our hypothesis is that explicitly structuring these behaviours as part of the control architecture leads to more reliable regulation of the software system.\
+This framing shifts the focus from building increasingly capable controllers to designing richer cybernetic environments in which those controllers operate.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa321\partightenfactor0
+
+\f0\b\fs48 \cf0 Experimental Design\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0\fs24 \cf0 All experiments use:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same language model\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same benchmark tasks\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same repositories\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same tool permissions\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same execution environment\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+the same evaluation methodology\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 The controller therefore remains fixed throughout the study.\
+The independent variable is the 
+\f0\b observation and feedback architecture
+\f1\b0  imposed around that controller.\
+Each experiment introduces one additional, explicitly enforced cybernetic mechanism. The controller is required to perform particular observations at defined points within the control loop and incorporate those observations before selecting subsequent actions. In this way, the experiments progressively enrich the controller\'92s estimate of the software state without changing the controller itself.\
+The experiments are cumulative, with each experiment retaining the mechanisms introduced previously.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 1 \'97 Default Agent\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  Baseline controller\
+The agent operates using its default behaviour.\
+It may inspect files, formulate plans, execute tests, or revise its implementation according to its own reasoning process. No explicit control architecture is imposed beyond the benchmark task itself.\
+This experiment establishes the baseline behaviour of the underlying coding agent.\
+\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f2 \cf0 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 2 \'97 Structured Test Feedback\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  Explicit negative feedback\
+The first enforced observation process is introduced.\
+After every implementation attempt, the controller is required to execute relevant verification and observe the resulting execution state before making additional code modifications.\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs26 \cf0 Implement\
+    
+\f4 \uc0\u8595 
+\f3 \
+Run relevant verification\
+    
+\f4 \uc0\u8595 
+\f3 \
+Observe results\
+    
+\f4 \uc0\u8595 
+\f3 \
+Update understanding\
+    
+\f4 \uc0\u8595 
+\f3 \
+Modify implementation\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs24 \cf0 Rather than allowing testing to occur opportunistically, execution feedback becomes a mandatory observation within every iteration of the control loop.\
+The objective is to determine whether explicitly enforcing negative feedback improves software engineering performance.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 3 \'97 Repository Analysis and Planning\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  Explicit state estimation\
+Before implementation begins, the controller is required to construct an explicit estimate of the software system.\
+This includes:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls2\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+repository exploration\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+architectural analysis\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+documentation review\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+requirement clarification\
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+implementation planning\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 These activities do not directly modify the software state. Instead, they improve the controller\'92s internal estimate of that state before actions are taken.\
+This experiment evaluates whether explicitly separating observation from action leads to better control.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 4 \'97 Step-Level Verification\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  High-frequency observation\
+Implementation is organised into independently verified steps.\
+For every planned step the controller must:\
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs26 \cf0 Select implementation step\
+        
+\f4 \uc0\u8595 
+\f3 \
+Implement\
+        
+\f4 \uc0\u8595 
+\f3 \
+Verify\
+        
+\f4 \uc0\u8595 
+\f3 \
+Observe results\
+        
+\f4 \uc0\u8595 
+\f3 \
+Proceed or repair\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\fs24 \cf0 Each implementation step therefore generates its own observation cycle before the controller proceeds further.\
+The objective is to increase the frequency of observations and reduce error accumulation throughout the implementation process.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 5 \'97 Persistent Learning\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  Persistent state estimation\
+Observations are no longer transient.\
+Following each verification cycle, the controller records:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls3\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+failed hypotheses\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+discovered constraints\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+architectural observations\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+implementation decisions\
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+remaining uncertainties\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 These observations become persistent state that informs subsequent decisions.\
+Rather than relying solely on the model\'92s working context, previous observations become an explicit component of the control architecture.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 6 \'97 Independent Review\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  Multiple observation channels\
+A second observer is introduced.\
+After implementation, an independent reviewer analyses the current software state and produces observations regarding:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls4\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+correctness\
+\ls4\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+requirement coverage\
+\ls4\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+architectural consistency\
+\ls4\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+maintainability\
+\ls4\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+potential defects\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 The implementing controller must incorporate these externally generated observations before continuing.\
+This experiment evaluates whether independent observation improves regulation beyond self-observation alone.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 Experiment 7 \'97 System-Level Convergence\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Control evolution:
+\f1\b0  Hierarchical observation\
+Previous experiments regulate individual implementation steps.\
+The final experiment introduces observations over the complete software system.\
+Once implementation has completed, the controller performs a structured convergence loop over the integrated system, incorporating:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls5\ilvl0\cf0 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+full test-suite execution\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+end-to-end behaviour\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+architectural consistency\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+documentation consistency\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+requirement completeness\
+\ls5\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+independent system review\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 Rather than observing only local implementation outcomes, the controller now receives observations describing the behaviour of the software system as a whole.\
+This experiment evaluates whether hierarchical observation improves overall system quality beyond local regulation.\
+\
+
+\f2 \uc0\u11835 
+\f1 \
+\
+\pard\pardeftab720\sa321\partightenfactor0
+
+\f0\b\fs48 \cf0 Experimental Progression\
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrt\brdrs\brdrw20\brdrcf2 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth1855\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth3441\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth8863\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\qc\partightenfactor0
+
+\fs24 \cf0 Experiment\cell 
+\pard\intbl\itap1\pardeftab720\sa240\qc\partightenfactor0
+\cf0 Primary intervention\cell 
+\pard\intbl\itap1\pardeftab720\sa240\qc\partightenfactor0
+\cf0 Newly enforced observation\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth1855\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth3441\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth8863\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+
+\f1\b0 \cf0 1\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Default behaviour\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 None\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth1855\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth3441\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth8863\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 2\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Negative feedback\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Execution and test results after every implementation cycle\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth1855\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth3441\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth8863\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 3\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 State estimation\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Repository, architecture, and requirements before implementation\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth1855\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth3441\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth8863\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 4\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Local regulation\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Verification after every implementation step\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth1855\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth3441\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth8863\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 5\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Persistent learning\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Recording and reuse of previous observations\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth1855\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth3441\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth8863\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 6\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Independent observation\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Reviewer-generated observations\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trwWidth15680\trftsWidth3 \trbrdrl\brdrs\brdrw20\brdrcf2 \trbrdrb\brdrs\brdrw20\brdrcf2 \trbrdrr\brdrs\brdrw20\brdrcf2 
+\clvertalc \clshdrawnil \clwWidth1855\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx2880
+\clvertalc \clshdrawnil \clwWidth3441\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx5760
+\clvertalc \clshdrawnil \clwWidth8863\clftsWidth3 \clbrdrt\brdrs\brdrw20\brdrcf2 \clbrdrl\brdrs\brdrw20\brdrcf2 \clbrdrb\brdrs\brdrw20\brdrcf2 \clbrdrr\brdrs\brdrw20\brdrcf2 \clpadt160 \clpadl240 \clpadb160 \clpadr240 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 7\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Hierarchical regulation\cell 
+\pard\intbl\itap1\pardeftab720\sa240\partightenfactor0
+\cf0 Whole-system observations before completion\cell \lastrow\row
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 Across all experiments, the controller remains unchanged. The study instead investigates how progressively enriching the observation and feedback architecture surrounding a fixed controller influences autonomous software engineering performance.\
+}

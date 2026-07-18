@@ -12,14 +12,19 @@ agents:
           - The step's objective
           - Which files to modify
           - Success criteria
-          - Which tests are relevant to this step
+          - Which verification checks apply (existing tests, new tests to create,
+            typechecks, etc.)
+          - Which new test functions must be created (`tests_to_create[]`)
 
           Implement ONLY this step. Do not implement future steps or unrelated
           functionality. If the step has repair feedback (previous attempt failed),
           read `/app/docs/repair-feedback.json` for details on what went wrong.
 
-          After implementing, verify correctness by running the relevant tests.
-          If tests fail, fix the issues before finishing.
+          Create the test functions listed in `tests_to_create[]` — they are
+          required for verification to pass. Add them to the appropriate existing
+          test files.
+          After implementing, verify correctness by running the specific tests
+          listed in `verification[].command`. If tests fail, fix the issues before finishing.
         provider:
           opencode:
             options:

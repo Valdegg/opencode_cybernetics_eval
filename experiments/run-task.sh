@@ -14,8 +14,7 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 RESULTS_FILE="$REPO_DIR/experiments/results.json"
 PIER_CONFIGS="$REPO_DIR/pier-configs"
 
-CONFIG="${1:?"Usage: $0 <config-name> [task-path] [n-attempts]"}
-Available: $(ls "$PIER_CONFIGS"/*.yaml | xargs -n1 basename | sed 's/\.yaml$//' | tr '\n' ' ')"
+CONFIG="${1:?Usage: $0 <config-name> [task-path] [n-attempts]}"
 TASK_PATH="${2:-$REPO_DIR/deep-swe/tasks/adaptix-name-mapping-aliases}"
 N_ATTEMPTS="${3:-1}"
 CONFIG_FILE="$PIER_CONFIGS/${CONFIG}.yaml"

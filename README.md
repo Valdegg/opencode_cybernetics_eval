@@ -45,10 +45,13 @@ explore(task)
 document(repository-analysis.md)            # human-readable architecture analysis
 
 // 2. Planning agent writes a **machine-parseable plan** with explicit
-//    success criteria per step (plan.json — parsed by the orchestrator)
+//    success criteria per step and a verification array that distinguishes
+//    existing tests from tests that must be created (plan.json — parsed
+//    by the orchestrator)
 plan = create_plan(analysis) -> plan.json   # each step has: objective, files,
-                                            #   tests[], success_criteria[],
-                                            #   expected_changes[]
+                                            #   success_criteria[],
+                                            #   verification[] {type, command, reason},
+                                            #   tests_to_create[]
 
 // 3. Run implement agent (docs baked into Docker image, prompted to read them)
 implement(plan)
@@ -69,17 +72,27 @@ for step in plan:                          # each step parsed from plan.json
 
     # Inject step context into the task directory
     write(current-step.json)               # step.id, .objective, .files,
-                                           #   .tests[], .success_criteria[]
+                                           #   .success_criteria[],
+                                           #   .verification[] {type, command, reason},
+                                           #   .tests_to_create[]
+
     write(repair-feedback.json)            # only on retry: why the last attempt failed
 
-    // Generate a **step-specific verifier** — runs ONLY the tests
-    // listed in plan.json for this step, so reward.json is scoped to
-    // this step's criteria. Injects it into the task's tests/ directory.
-    inject_step_verifier(step.tests)
+    // Generate a **step-specific verifier** — processes each entry in
+    // step.verification[]. For each entry:
+    //   - existing_test: runs the command; may also run pre-patch for p2p regression
+    //   - new_test:      verifies the test function now exists (agent created it),
+    //                    then runs the command post-patch
+    //   - typecheck/build/execution: runs the command as-is
+    inject_step_verifier(step.verification)
+
+    // The orchestrator also checks tests_to_create: it parses the agent's
+    // model.patch and confirms each listed test function was actually written.
+    verify_tests_created(step.tests_to_create, model.patch)
 
     // Run one Pier trial: implement agent + step-specific verifier
     run implement(step)                    # agent reads current-step.json
-    results = parse_verifier(reward.json)  # did step.tests[] pass?
+    results = parse_verifier(reward.json)  # did verification[] pass?
 
     if results.passed:                     # all step-specific tests green
       break                                # exit repair loop, move to review
@@ -132,8 +145,12 @@ repeat until all_tests_pass and review.approved:
 ```
 
 Key invariants:
-- **Success criteria are generated during planning** (Phase 0), not during implementation. The planner agent writes `plan.json` with explicit `success_criteria[]` per step. These criteria drive both verification ("did the tests listed for this step pass?") and review ("does the code satisfy the criteria?").
-- **Verification is scoped per step** — the step-specific test runner only runs `step.tests[]`, not the full suite. This gives a precise pass/fail signal for each step in isolation.
+- **Success criteria are generated during planning** (Phase 0), not during implementation. The planner agent writes `plan.json` with explicit `success_criteria[]` per step. These criteria define the **desired state** — what must be true after the step is implemented.
+- **Verification is separated from test creation** — the plan's `verification[]` array explicitly declares how each criterion is observed. Each entry has a `type`:
+  - `existing_test` — test already exists; run it pre- and post-patch for regression
+  - `new_test` — test does not exist yet; agent must create it. The test function name MUST appear in `tests_to_create[]`, and the orchestrator verifies it was written.
+  - `typecheck` / `build` / `execution` — non-test observation mechanisms
+- The `tests_to_create[]` array documents what new test instrumentation the implement agent must write. The orchestrator parses the agent's patch to confirm each listed function was actually created.
 - **Review is independent** — a separate agent (read-only permissions, no code access) evaluates the step's output against its success criteria and may propose plan updates for remaining steps.
 
 ### Historical note

@@ -127,11 +127,63 @@ def inject_docs_into_dockerfile(task_dir):
     return True
 
 
-def inject_step_verifier(task_dir, tests):
-    """Replace the standard test runner with one that runs only step.tests[]."""
+def inject_step_verifier(task_dir, verification, tests_to_create=None):
+    """Replace the standard test runner with one that processes the step's
+    verification[] array. Handles existing_test, new_test, typecheck, build,
+    execution types. Leaves tests/Dockerfile intact."""
     test_sh = task_dir / "tests" / "test.sh"
-    test_dockerfile = task_dir / "tests" / "Dockerfile"
-    test_names = " ".join(tests)
+
+    if not verification:
+        verification = []
+
+    # Build the shell script that runs each verification entry
+    cmds = []
+    for i, v in enumerate(verification):
+        vtype = v.get("type", "execution")
+        cmd = v.get("command", "")
+        reason = v.get("reason", f"verification {i}")
+        safe_reason = reason.replace('"', '\\"')
+
+        if vtype == "existing_test":
+            cmds.append(textwrap.dedent(f'''\
+            echo "[verif {i}] existing_test: {safe_reason}"
+            echo "  Running: {cmd}"
+            python -m pytest {" ".join(cmd.split()[2:])} -v --junitxml=/logs/verifier/v{i}.xml 2>&1 | tee /logs/verifier/v{i}.log
+            rc=$?
+            echo "  Exit code: $rc"
+            '''))
+        elif vtype == "new_test":
+            cmds.append(textwrap.dedent(f'''\
+            echo "[verif {i}] new_test: {safe_reason}"
+            echo "  Running: {cmd}"
+            python -m pytest {" ".join(cmd.split()[2:])} -v --junitxml=/logs/verifier/v{i}.xml 2>&1 | tee /logs/verifier/v{i}.log
+            rc=$?
+            echo "  Exit code: $rc"
+            '''))
+        else:
+            cmds.append(textwrap.dedent(f'''\
+            echo "[verif {i}] {vtype}: {safe_reason}"
+            echo "  Running: {cmd}"
+            eval {cmd} 2>&1 | tee /logs/verifier/v{i}.log
+            rc=$?
+            echo "  Exit code: $rc"
+            '''))
+
+    cmds_str = "\n".join(cmds)
+
+    # Build tests_to_create verification inline
+    ttc_checks = ""
+    if tests_to_create:
+        checks = []
+        for t in tests_to_create:
+            checks.append(f'''echo "[ttc] Checking test '{t}' exists in patch..."
+if ! grep -q "{t}" /logs/artifacts/model.patch 2>/dev/null; then
+  echo "[ttc] MISSING: test '{t}' not found in model.patch"
+  TTC_FAILED=1
+else
+  echo "[ttc] FOUND: test '{t}' in model.patch"
+fi''')
+        ttc_checks = "\n".join(checks)
 
     new_test_sh = textwrap.dedent(f"""\
     #!/bin/bash
@@ -149,33 +201,47 @@ def inject_step_verifier(task_dir, tests):
     fi
 
     set +e
-    python -m pytest {test_names} -v --junitxml=/logs/verifier/results.xml 2>&1 | tee /logs/verifier/step.log
-    rc=$?
+    N_FAILED=0
+    N_TOTAL=0
+    {cmds_str}
+    {ttc_checks}
+    TTC_FAILED=${{TTC_FAILED:-0}}
     set -e
 
-    passed=$(python3 -c "
-    import xml.etree.ElementTree as ET
-    tree = ET.parse('/logs/verifier/results.xml')
-    print(sum(1 for tc in tree.iter('testcase') if not any(ch.tag.endswith('failure') or ch.tag.endswith('error') for ch in tc)))
-    ")
-    failed=$(python3 -c "
-    import xml.etree.ElementTree as ET
-    tree = ET.parse('/logs/verifier/results.xml')
-    print(sum(1 for tc in tree.iter('testcase') if any(ch.tag.endswith('failure') or ch.tag.endswith('error') for ch in tc)))
-    ")
-    total=$((passed + failed))
-
+    # Build reward.json from per-entry results
     python3 -c "
-    import json
+    import json, glob, xml.etree.ElementTree as ET
+    results = {{}}
+    for xml_file in sorted(glob.glob('/logs/verifier/v*.xml')):
+        try:
+            tree = ET.parse(xml_file)
+            for tc in tree.iter('testcase'):
+                name = tc.get('name', 'unknown')
+                failed = any(ch.tag.endswith('failure') or ch.tag.endswith('error') for ch in tc)
+                results[name] = 0 if failed else 1
+        except Exception:
+            pass
+    # If no XML results (e.g. typecheck/build/execution), check log exit codes
+    if not results:
+        for log_file in sorted(glob.glob('/logs/verifier/v*.log')):
+            import re
+            m = re.search(r'Exit code: (\d+)', open(log_file).read())
+            if m:
+                results['verif_' + log_file.split('/')[-1].replace('.log','')] = 1 if m.group(1) == '0' else 0
+    ttc_ok = 0 if ${{TTC_FAILED}} else 1
+    passed = sum(1 for v in results.values() if v == 1) + ttc_ok
+    total = len(results) + (1 if {1 if tests_to_create else 0} else 0)
+    reward = 1 if total > 0 and passed == total else 0
     out = {{
-        'reward': 1 if $total > 0 and $failed == 0 else 0,
-        'f2p_total': $total,
-        'f2p_passed': $passed,
+        'reward': reward,
+        'f2p_total': total,
+        'f2p_passed': passed,
         'p2p_total': 0,
         'p2p_passed': 0,
-        'f2p': $passed / $total if $total > 0 else 0.0,
+        'f2p': passed / total if total > 0 else 0.0,
         'p2p': 1.0,
-        'partial': 1.0 if $failed == 0 else 0.0,
+        'partial': 1.0 if passed == total else 0.0,
+        'detail': {{'results': results, 'ttc_ok': bool(ttc_ok)}}
     }}
     with open('/logs/verifier/reward.json', 'w') as f:
         json.dump(out, f)
@@ -185,24 +251,6 @@ def inject_step_verifier(task_dir, tests):
 
     test_sh.write_text(new_test_sh)
     test_sh.chmod(0o755)
-
-    new_df = textwrap.dedent("""\
-    FROM python:3.12-slim
-    RUN apt-get update -qq && apt-get install -y -qq git && rm -rf /var/lib/apt/lists/*
-    WORKDIR /app
-    ENV PYTHONPATH=/app/src
-    COPY src/ /app/src/
-    COPY test.sh /tests/test.sh
-    RUN pip install --no-cache-dir pytest && \\
-        git init && \\
-        git config user.email "dev@example.com" && \\
-        git config user.name "Developer" && \\
-        git add -A && \\
-        git commit -m "Baseline" && \\
-        git tag _baseline && \\
-        chmod +x /tests/test.sh
-    """)
-    test_dockerfile.write_text(new_df)
 
 
 def extract_patch_file(job_dir):
@@ -409,7 +457,11 @@ def main():
                 }))
 
             inject_docs_into_dockerfile(build_dir)
-            inject_step_verifier(build_dir, step.get("tests", []))
+            inject_step_verifier(
+                build_dir,
+                step.get("verification", []),
+                step.get("tests_to_create", [])
+            )
             write_pre_artifacts(build_dir)
 
             before_impl = find_latest_job_dir()
