@@ -11,26 +11,68 @@ cybernetic framing.
 
 ## Cybernetic Framing
 
-We model autonomous software engineering through the lens of cybernetics.
-The software repository and its execution environment form the **plant**, whose
-state consists of source code, dependencies, documentation, and runtime behaviour.
-The LLM acts as the **controller**, selecting actions (edit code, run tools,
-terminate). The controller never directly observes the plant's true state —
-it receives **observations** through repository files, test output, logs, and
-other artefacts, and constructs an internal estimate before acting.
+The experimental tiers progressively modify the **observation and feedback architecture** surrounding a fixed base language model. From a cybernetic perspective, the repository is the system being controlled, while the agent acts based on observations rather than direct access to the repository's true state.
 
-Loop engineering is therefore the engineering of the **observation and feedback
-architecture** surrounding the controller. Rather than changing the model, we
-modify what information it is required to observe, when those observations occur,
-and how they influence subsequent decisions. We test three tiers of control loop:
+Each tier increases the quality, frequency, and structure of the signals available to the controller, improving state estimation and enabling more reliable control.
 
-| Tier | Name | Loop script |
-|---|---|---|
-| **A** | Preparation | `explore → document → plan` then implement |
-| **B** | Verified State Transitions | A + per-step `implement → verify → repair → review → persist` loop |
-| **C** | System Convergence | B + whole-system `full_suite → review → repair` convergence loop |
+| Tier | Cybernetic principle | Primary signals | State estimation |
+|------|----------------------|-----------------|------------------|
+| **A – Preparation** | Improve initial observation | Repository structure, documentation, code, existing tests | Build an explicit understanding of the repository before acting |
+| **B – Verified State Transitions** | Closed-loop local feedback | Goal states, test results, builds, type checks, execution, independent review | Continuously update repository state after every verified implementation step |
+| **C – System Convergence** | Global feedback and convergence | Full test suite, integrated system behaviour, final review | Validate that all local state transitions produce the desired system behaviour |
 
-In Tier B, each implementation step is treated as a state transition. The planner defines the desired goal state and its verification before implementation begins, and the orchestrator prevents the agent from proceeding until that transition has been verified.
+### Tier A – Preparation
+
+Tier A improves the controller's initial state estimate before implementation begins. The planning agent explores the repository and produces an explicit implementation plan.
+
+**Primary signals**
+- Repository structure
+- Existing source code
+- Documentation
+- Existing tests
+
+**Cybernetic role**
+
+Reduce uncertainty by improving observation before the first control action.
+
+---
+
+### Tier B – Verified State Transitions
+
+Tier B introduces continuous local feedback. Each implementation step defines a **goal state** and the signals that will determine whether that state has been achieved before implementation begins.
+
+Implementation proceeds only after the required observations confirm the intended state transition.
+
+**Primary signals**
+- Goal state
+- Unit and integration tests
+- Build results
+- Type checking
+- Static analysis
+- Runtime execution
+- Independent review
+
+**Cybernetic role**
+
+Regulate the repository through a sequence of verified state transitions using continuous feedback.
+
+---
+
+### Tier C – System Convergence
+
+Tier C observes the repository as a complete system rather than a sequence of individual changes. Even when each local transition succeeds, interactions between changes may produce unexpected behaviour.
+
+The final tier therefore verifies the integrated system and iterates until the overall task has converged.
+
+**Primary signals**
+- Full verification suite
+- Integrated runtime behaviour
+- End-to-end tests
+- Independent system review
+
+**Cybernetic role**
+
+Use global system feedback to verify convergence of the complete repository state.
 
 The base LLM remains fixed throughout. The study investigates how
 progressively enriching the observation architecture influences autonomous
