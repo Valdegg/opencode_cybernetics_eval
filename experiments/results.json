@@ -1147,5 +1147,41 @@
     "output_tokens": 0,
     "started_at": "2026-07-17T23:05:29.849758Z",
     "finished_at": "2026-07-17T23:05:30.996816Z"
+  },
+  {
+    "experiment": "opencode-deepseek-tierB-plan-dummy",
+    "eval_name": "opencode__opencode-deepseek-tierB-plan-dummy",
+    "attempt": 1,
+    "reward": null,
+    "partial": null,
+    "f2p_passed": null,
+    "f2p_total": null,
+    "f2p_ratio": null,
+    "p2p_passed": null,
+    "p2p_total": null,
+    "p2p_ratio": null,
+    "n_agent_steps": 17,
+    "input_tokens": 216226,
+    "output_tokens": 4995,
+    "cost_usd": null,
+    "exception": null,
+    "started_at": "2026-07-18T07:27:40.187580Z",
+    "finished_at": "2026-07-18T07:29:29.452959Z"
+  },
+  {
+    "experiment": "opencode-deepseek-tierB-plan-dummy",
+    "attempt": "aggregate",
+    "n_trials": 1,
+    "n_errors": 0,
+    "f2p_passed": 0.0,
+    "f2p_total": 0,
+    "f2p_ratio": null,
+    "p2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_ratio": null,
+    "input_tokens": 216226,
+    "output_tokens": 4995,
+    "started_at": "2026-07-18T07:27:40.187580Z",
+    "finished_at": "2026-07-18T07:29:29.452959Z"
   }
 ]

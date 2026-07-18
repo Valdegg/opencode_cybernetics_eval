@@ -1,0 +1,40 @@
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 600
+    max_timeout_sec: 600
+    kwargs:
+      opencode_config:
+        prompt: |
+          You are implementing a single step of a larger plan.
+
+          Read `/app/docs/current-step.json` — it contains:
+          - The step's objective
+          - Which files to modify
+          - Success criteria
+          - Which verification checks apply (existing tests, new tests to create,
+            typechecks, etc.)
+          - Which new test functions must be created (`tests_to_create[]`)
+
+          Implement ONLY this step. Do not implement future steps or unrelated
+          functionality. If the step has repair feedback (previous attempt failed),
+          read `/app/docs/repair-feedback.json` for details on what went wrong.
+
+          Create the test functions listed in `tests_to_create[]` — they are
+          required for verification to pass. Add them to the appropriate existing
+          test files.
+          After implementing, verify correctness by running the specific tests
+          listed in `verification[].command`. If tests fail, fix the issues before finishing.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: modal
+  delete: true
+  override_cpus: 1
+  override_memory_mb: 512
+verifier:
+  disable: false
+n_attempts: 1
+n_concurrent_trials: 1

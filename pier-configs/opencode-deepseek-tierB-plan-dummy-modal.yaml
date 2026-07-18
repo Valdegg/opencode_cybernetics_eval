@@ -1,8 +1,8 @@
 agents:
   - name: opencode
     model_name: opencode/deepseek-v4-flash-free
-    override_timeout_sec: 1200
-    max_timeout_sec: 1200
+    override_timeout_sec: 600
+    max_timeout_sec: 600
     kwargs:
       agent: tierB-planner
       opencode_config:
@@ -155,7 +155,7 @@ agents:
             options:
               baseURL: "https://opencode.ai/zen/v1"
 environment:
-  type: docker
+  type: modal
   delete: true
   override_cpus: 1
   override_memory_mb: 512
