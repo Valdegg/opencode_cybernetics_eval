@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tier B: Task Decomposition Loop wrapper.
+"""Tier B: Verified State Transitions Loop wrapper.
 
 Orchestration:
   Phase 0: Planning agent (perm-locked, docs/ only) → plan.json

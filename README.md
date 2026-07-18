@@ -25,9 +25,9 @@ modify what information it is required to observe, when those observations occur
 and how they influence subsequent decisions. We test three tiers of control loop:
 
 | Tier | Name | Loop script |
-|---|---|---|
+|---|---|---|---|
 | **A** | Preparation | `explore → document → plan` then implement |
-| **B** | Task Decomposition | A + per-step `implement → verify → review → persist → repair` loop |
+| **B** | Verified State Transitions | A + per-step `implement → verify → review → persist → repair` loop |
 | **C** | System Convergence | B + whole-system `full_suite → review → repair` convergence loop |
 
 The base LLM remains fixed throughout. The study investigates how
@@ -46,11 +46,11 @@ explore(task)
 document(repository-analysis.md)            # human-readable architecture analysis
 
 // 2. Planning agent writes a **machine-parseable plan** with explicit
-//    success criteria per step and a verification array that distinguishes
+//    goal state per step and a verification array that distinguishes
 //    existing tests from tests that must be created (plan.json — parsed
 //    by the orchestrator)
 plan = create_plan(analysis) -> plan.json   # each step has: objective, files,
-                                            #   success_criteria[],
+                                             #   goal_state[],
                                             #   verification[] {type, command, reason},
                                             #   tests_to_create[]
 
@@ -59,7 +59,7 @@ implement(plan)
 
 
 # ─────────────────────────────────────────────
-# Tier B: Task Decomposition Loop
+# Tier B: Verified State Transitions Loop
 # ─────────────────────────────────────────────
 
 // Phase 0 — same as Tier A step 1+2: planner produces plan.json
@@ -73,7 +73,7 @@ for step in plan:                          # each step parsed from plan.json
 
     # Inject step context into the task directory
     write(current-step.json)               # step.id, .objective, .files,
-                                           #   .success_criteria[],
+                                            #   .goal_state[],
                                            #   .verification[] {type, command, reason},
                                            #   .tests_to_create[]
 
@@ -106,7 +106,7 @@ for step in plan:                          # each step parsed from plan.json
   // so the reviewer sees the code post-changes, then runs the reviewer
   // agent (permission: read-only bash + docs/ write for review.json)
   apply_patch(accumulated_patch)
-  run review(step)                         # evaluates success_criteria[],
+  run review(step)                         # evaluates goal_state[],
                                            #   examines git diff, reads code
   review = parse(review.json)              # {approved, requires_rework,
                                            #   feedback, plan_updates}
@@ -146,13 +146,15 @@ repeat until all_tests_pass and review.approved:
 ```
 
 Key invariants:
-- **Success criteria are generated during planning** (Phase 0), not during implementation. The planner agent writes `plan.json` with explicit `success_criteria[]` per step. These criteria define the **desired state** — what must be true after the step is implemented.
-- **Verification is separated from test creation** — the plan's `verification[]` array explicitly declares how each criterion is observed. Each entry has a `type`:
+- **The planner defines the goal state for each implementation step before implementation begins.** The implementation agent is responsible for achieving that goal state, not redefining it.
+- **`verification[]` defines how the orchestrator will determine whether the step's goal state has been achieved.** Verification may reuse existing tests, require new tests to be created, or use builds, type checking, execution, or other executable checks. Each entry has a `type`:
   - `existing_test` — test already exists; run it pre- and post-patch for regression
   - `new_test` — test does not exist yet; agent must create it. The test function name MUST appear in `tests_to_create[]`, and the orchestrator verifies it was written.
   - `typecheck` / `build` / `execution` — non-test observation mechanisms
+- **The planner decides what must be achieved and how success will be measured. The implementation agent decides how to modify the code to satisfy those requirements.** This separation of responsibilities is central to the architecture.
+- **Verification determines whether the predefined goal state has been achieved. Review evaluates whether the implementation is appropriate and may update the remaining plan.**
 - The `tests_to_create[]` array documents what new test instrumentation the implement agent must write. The orchestrator parses the agent's patch to confirm each listed function was actually created.
-- **Review is independent** — a separate agent (no code modification access, no test execution) evaluates the step's output against its success criteria and may propose plan updates for remaining steps.
+- **Review is independent** — a separate agent (no code modification access, no test execution) evaluates the step's output against its goal state and may propose plan updates for remaining steps.
 
 ### Historical note
 
@@ -165,7 +167,7 @@ testable loop configurations:
 |---|---|
 | Exp 1 (vanilla), Exp 2 (feedback), Exp 2b (orchestrator) | Baseline — no loop |
 | Exp 3 (state estimation) | Tier A — preparation |
-| Exp 4 (step verification), Exp 5 (persistence), Exp 6 (independent review) | Tier B — task decomposition |
+| Exp 4 (step verification), Exp 5 (persistence), Exp 6 (independent review) | Tier B — verified state transitions |
 | Exp 7 (system convergence) | Tier C — system convergence |
 
 ## Prerequisites
@@ -230,7 +232,7 @@ allowlists) to structurally prevent the agent from doing the wrong thing:
 - `task: deny` — agent cannot spawn subagents
 
 The edit permission patterns match against **relative paths** from the worktree
-(e.g. `/app/docs/plan.md` → `docs/plan.md`), so `"docs/*"` correctly allows only
+(e.g. `/app/docs/plan.json` → `docs/plan.json`), so `"docs/*"` correctly allows only
 the docs directory.
 
 ### The Two-Phase Pattern (Exp3b)
@@ -534,8 +536,8 @@ cat jobs/<job>/<trial>/agent/trajectory.json | jq '.[] | {step, tool, input, out
 | `opencode-deepseek-exp3b-research-dummy.yaml` | **Tier A** Phase 1 | Research (perm-locked) | Can only write `docs/` |
 | `opencode-deepseek-tierB-plan-dummy.yaml` | **Tier B** Phase 0 | Planning (perm-locked) | Produces `plan.json` + `repository-analysis.md` |
 | `opencode-deepseek-tierB-implement-dummy.yaml` | **Tier B** per-step | Step implementation | Prompt reads `current-step.json`; verifier enabled |
-| `opencode-deepseek-tierB-review-dummy.yaml` | **Tier B** per-step | Step review (read-only) | Prompt evaluates step vs criteria; outputs `review.json` |
-| `opencode-deepseek-tierA-research-dummy.yaml` | **Tier A** Phase 1 | Research + planning (perm-locked) | Produces `plan.json` with per-step success criteria |
+| `opencode-deepseek-tierB-review-dummy.yaml` | **Tier B** per-step | Step review (read-only) | Prompt evaluates step vs goal state; outputs `review.json` |
+| `opencode-deepseek-tierA-research-dummy.yaml` | **Tier A** Phase 1 | Research + planning (perm-locked) | Produces `plan.json` with per-step goal state |
 | `opencode-deepseek-tierA-implement-dummy.yaml` | **Tier A** Phase 2 | Docs-guided implementation | Prompt tells agent to read docs/ and follow plan |
 | `opencode-deepseek-batch.yaml` | — | Batch vanilla | Runs vanilla on 3 tasks sequentially |
 | `opencode-deepseek-exp2.yaml` | — | — | Deprecated (use exp2-prompt) |

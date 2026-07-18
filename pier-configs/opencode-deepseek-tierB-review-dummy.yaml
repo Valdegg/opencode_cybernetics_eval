@@ -50,7 +50,7 @@ agents:
 
               EVALUATE:
               1. Does the implementation satisfy the step's objective?
-              2. Are all success criteria met?
+               2. Are all items in the step's goal state met?
               3. Are there edge cases not handled?
               4. Are there design issues or code smells?
               5. Does the implementation integrate cleanly with existing code?
@@ -65,7 +65,7 @@ agents:
               }
               ```
 
-              Set `approved: true` only if ALL success criteria are fully met and
+              Set `approved: true` only if ALL items in the goal state are fully met and
               there are no significant issues. Set `requires_rework: true` if the
               step's own code needs changes (not just future steps).
 

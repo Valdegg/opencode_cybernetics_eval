@@ -68,15 +68,32 @@ agents:
                     "id": 1,
                     "objective": "Single-sentence description of what this step achieves",
                     "files": ["relative/path/to/files to edit"],
-                    "tests": ["fully qualified test names relevant to this step"],
-                    "success_criteria": [
-                      "specific observable outcome 1",
-                      "specific observable outcome 2"
+                    "goal_state": [
+                      "specific observable outcome — the DESIRED STATE after implementation",
+                      "e.g. 'validate_email() rejects None input'"
+                    ],
+                    "verification": [
+                      {
+                        "type": "existing_test | new_test | typecheck | build | execution",
+                        "command": "the exact shell command to run",
+                        "reason": "why this observation is needed"
+                      }
+                    ],
+                    "tests_to_create": [
+                      "list of test function names that the agent must write",
+                      "e.g. test_validate_email_none"
                     ]
                   }
                 ]
               }
               ```
+
+              **Verification types explained:**
+              - `existing_test`: a test that already exists. Include the command to run it.
+                Example: `"command": "python -m pytest tests/test_validator.py::test_existing -x"`
+              - `new_test`: a test that does NOT exist yet. The agent must CREATE this test function.
+                Example: `"command": "python -m pytest tests/test_validator.py::test_validate_email_none -x"`
+              - `typecheck` / `build` / `execution`: non-test observation mechanisms.
 
               Example for a validation feature:
               ```json
@@ -86,11 +103,28 @@ agents:
                     "id": 1,
                     "objective": "Add input validation logic to the validator module",
                     "files": ["src/validator.py"],
-                    "tests": ["tests/test_validator.py::test_validate_email"],
-                    "success_criteria": [
+                    "goal_state": [
                       "validate_email() rejects invalid email formats",
                       "validate_email() accepts valid email formats",
-                      "validate_email() raises ValueError on None input"
+                      "validate_email() raises ValueError on None input",
+                      "Existing validation behaviors are unchanged"
+                    ],
+                    "verification": [
+                      {
+                        "type": "existing_test",
+                        "command": "python -m pytest tests/test_validator.py::test_existing_validation -x",
+                        "reason": "Ensure existing validation still works"
+                      },
+                      {
+                        "type": "new_test",
+                        "command": "python -m pytest tests/test_validator.py::test_validate_email_none -x",
+                        "reason": "New edge case must be handled"
+                      }
+                    ],
+                    "tests_to_create": [
+                      "test_validate_email_none",
+                      "test_validate_email_invalid_format",
+                      "test_validate_email_valid_format"
                     ]
                   }
                 ]

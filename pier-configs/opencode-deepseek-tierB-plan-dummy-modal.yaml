@@ -68,7 +68,7 @@ agents:
                     "id": 1,
                     "objective": "Single-sentence description of what this step achieves",
                     "files": ["relative/path/to/files to edit"],
-                    "success_criteria": [
+                    "goal_state": [
                       "specific observable outcome — the DESIRED STATE after implementation",
                       "e.g. 'validate_email() rejects None input'"
                     ],
@@ -111,7 +111,7 @@ agents:
                     "id": 1,
                     "objective": "Add input validation logic to the validator module",
                     "files": ["src/validator.py"],
-                    "success_criteria": [
+                    "goal_state": [
                       "validate_email() rejects invalid email formats",
                       "validate_email() accepts valid email formats",
                       "validate_email() raises ValueError on None input",
