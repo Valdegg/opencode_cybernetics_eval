@@ -1,8 +1,9 @@
 # Cybernetic Loop Engineering Experiment
 
-This project tests whether **control loop architecture** around an AI coding agent
-matters more than the model itself. The model (deepseek-v4-flash-free) stays
-constant; only the controller changes.
+This project tests how the **control and observation architecture** surrounding
+an AI coding agent affects performance. The underlying language model
+(deepseek-v4-flash-free) stays constant; only the imposed orchestration,
+observation, memory, and feedback mechanisms change.
 
 See [`EXPERIMENT`](./EXPERIMENT) for the original experimental philosophy, and
 [`docs/cybernetics-framing.rtf`](./docs/cybernetics-framing.rtf) for the full
@@ -29,7 +30,7 @@ and how they influence subsequent decisions. We test three tiers of control loop
 | **B** | Task Decomposition | A + per-step `implement → verify → review → persist → repair` loop |
 | **C** | System Convergence | B + whole-system `full_suite → review → repair` convergence loop |
 
-The controller (LLM) remains fixed throughout. The study investigates how
+The base LLM remains fixed throughout. The study investigates how
 progressively enriching the observation architecture influences autonomous
 software engineering performance.
 
@@ -151,7 +152,7 @@ Key invariants:
   - `new_test` — test does not exist yet; agent must create it. The test function name MUST appear in `tests_to_create[]`, and the orchestrator verifies it was written.
   - `typecheck` / `build` / `execution` — non-test observation mechanisms
 - The `tests_to_create[]` array documents what new test instrumentation the implement agent must write. The orchestrator parses the agent's patch to confirm each listed function was actually created.
-- **Review is independent** — a separate agent (read-only permissions, no code access) evaluates the step's output against its success criteria and may propose plan updates for remaining steps.
+- **Review is independent** — a separate agent (no code modification access, no test execution) evaluates the step's output against its success criteria and may propose plan updates for remaining steps.
 
 ### Historical note
 
