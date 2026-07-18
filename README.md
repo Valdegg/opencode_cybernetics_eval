@@ -25,7 +25,7 @@ modify what information it is required to observe, when those observations occur
 and how they influence subsequent decisions. We test three tiers of control loop:
 
 | Tier | Name | Loop script |
-|---|---|---|---|
+|---|---|---|
 | **A** | Preparation | `explore → document → plan` then implement |
 | **B** | Verified State Transitions | A + per-step `implement → verify → review → persist → repair` loop |
 | **C** | System Convergence | B + whole-system `full_suite → review → repair` convergence loop |
