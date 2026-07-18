@@ -148,7 +148,7 @@ def inject_step_verifier(task_dir, verification, tests_to_create=None):
             cmds.append(textwrap.dedent(f'''\
             echo "[verif {i}] existing_test: {safe_reason}"
             echo "  Running: {cmd}"
-            python -m pytest {" ".join(cmd.split()[2:])} -v --junitxml=/logs/verifier/v{i}.xml 2>&1 | tee /logs/verifier/v{i}.log
+            {cmd} --junitxml=/logs/verifier/v{i}.xml 2>&1 | tee /logs/verifier/v{i}.log
             rc=$?
             echo "  Exit code: $rc"
             '''))
@@ -156,7 +156,7 @@ def inject_step_verifier(task_dir, verification, tests_to_create=None):
             cmds.append(textwrap.dedent(f'''\
             echo "[verif {i}] new_test: {safe_reason}"
             echo "  Running: {cmd}"
-            python -m pytest {" ".join(cmd.split()[2:])} -v --junitxml=/logs/verifier/v{i}.xml 2>&1 | tee /logs/verifier/v{i}.log
+            {cmd} --junitxml=/logs/verifier/v{i}.xml 2>&1 | tee /logs/verifier/v{i}.log
             rc=$?
             echo "  Exit code: $rc"
             '''))
@@ -206,47 +206,50 @@ fi''')
     {cmds_str}
     {ttc_checks}
     TTC_FAILED=${{TTC_FAILED:-0}}
+    export TTC_FAILED
+    export HAS_TTC={1 if tests_to_create else 0}
     set -e
 
     # Build reward.json from per-entry results
-    python3 -c "
-    import json, glob, xml.etree.ElementTree as ET
-    results = {{}}
-    for xml_file in sorted(glob.glob('/logs/verifier/v*.xml')):
-        try:
-            tree = ET.parse(xml_file)
-            for tc in tree.iter('testcase'):
-                name = tc.get('name', 'unknown')
-                failed = any(ch.tag.endswith('failure') or ch.tag.endswith('error') for ch in tc)
-                results[name] = 0 if failed else 1
-        except Exception:
-            pass
-    # If no XML results (e.g. typecheck/build/execution), check log exit codes
-    if not results:
-        for log_file in sorted(glob.glob('/logs/verifier/v*.log')):
-            import re
-            m = re.search(r'Exit code: (\d+)', open(log_file).read())
-            if m:
-                results['verif_' + log_file.split('/')[-1].replace('.log','')] = 1 if m.group(1) == '0' else 0
-    ttc_ok = 0 if ${{TTC_FAILED}} else 1
-    passed = sum(1 for v in results.values() if v == 1) + ttc_ok
-    total = len(results) + (1 if {1 if tests_to_create else 0} else 0)
-    reward = 1 if total > 0 and passed == total else 0
-    out = {{
-        'reward': reward,
-        'f2p_total': total,
-        'f2p_passed': passed,
-        'p2p_total': 0,
-        'p2p_passed': 0,
-        'f2p': passed / total if total > 0 else 0.0,
-        'p2p': 1.0,
-        'partial': 1.0 if passed == total else 0.0,
-        'detail': {{'results': results, 'ttc_ok': bool(ttc_ok)}}
-    }}
-    with open('/logs/verifier/reward.json', 'w') as f:
-        json.dump(out, f)
-    print(json.dumps(out))
-    "
+    python3 << 'PYEOF'
+import json, glob, xml.etree.ElementTree as ET, os
+results = {}
+for xml_file in sorted(glob.glob('/logs/verifier/v*.xml')):
+    try:
+        tree = ET.parse(xml_file)
+        for tc in tree.iter('testcase'):
+            name = tc.get('name', 'unknown')
+            failed = any(ch.tag.endswith('failure') or ch.tag.endswith('error') for ch in tc)
+            results[name] = 0 if failed else 1
+    except Exception:
+        pass
+if not results:
+    for log_file in sorted(glob.glob('/logs/verifier/v*.log')):
+        import re
+        m = re.search(r'Exit code: (\d+)', open(log_file).read())
+        if m:
+            results['verif_' + log_file.split('/')[-1].replace('.log','')] = 1 if m.group(1) == '0' else 0
+ttc_failed = int(os.environ.get('TTC_FAILED', '0'))
+ttc_ok = 0 if ttc_failed else 1
+has_ttc = int(os.environ.get('HAS_TTC', '0'))
+passed = sum(1 for v in results.values() if v == 1) + ttc_ok
+total = len(results) + has_ttc
+reward = 1 if total > 0 and passed == total else 0
+out = {
+    'reward': reward,
+    'f2p_total': total,
+    'f2p_passed': passed,
+    'p2p_total': 0,
+    'p2p_passed': 0,
+    'f2p': passed / total if total > 0 else 0.0,
+    'p2p': 1.0,
+    'partial': 1.0 if passed == total else 0.0,
+    'detail': {'results': results, 'ttc_ok': bool(ttc_ok)}
+}
+with open('/logs/verifier/reward.json', 'w') as f:
+    json.dump(out, f)
+print(json.dumps(out))
+PYEOF
     """)
 
     test_sh.write_text(new_test_sh)
@@ -261,14 +264,29 @@ def extract_patch_file(job_dir):
     return patch_file if patch_file.exists() else None
 
 
+def has_trial_exception(job_dir):
+    """Check if the first trial in the job has an exception.txt (agent error)."""
+    trials = [d for d in job_dir.iterdir() if d.is_dir() and "__" in d.name]
+    if not trials:
+        return False
+    return (trials[0] / "exception.txt").exists()
+
 def read_trial_verifier_result(job_dir):
     trials = [d for d in job_dir.iterdir() if d.is_dir() and "__" in d.name]
     if not trials:
         return None
     reward_file = trials[0] / "verifier" / "reward.json"
-    if not reward_file.exists():
-        return None
-    return json.loads(reward_file.read_text())
+    if reward_file.exists():
+        return json.loads(reward_file.read_text())
+    # Fallback: read from trial result.json
+    trial_result = trials[0] / "result.json"
+    if trial_result.exists():
+        r = json.loads(trial_result.read_text())
+        vr = r.get("verifier_result") or {}
+        rewards = vr.get("rewards") or {}
+        reward = rewards.get("reward", -1)
+        return {"f2p_total": 0, "f2p_passed": 0, "reward": reward}
+    return None
 
 
 def read_file_from_patch(patch_path, file_pattern):
@@ -477,11 +495,19 @@ def main():
 
                 # Check step-level tests passed (all listed tests green)
                 step_passed = False
-                if vr and vr.get("f2p_total", 0) > 0:
+                trial_errored = has_trial_exception(impl_job)
+
+                if trial_errored:
+                    log(f"Agent errored in attempt {attempt} — treating as failed")
+                elif vr and vr.get("f2p_total", 0) > 0:
                     step_passed = vr["f2p_passed"] == vr["f2p_total"]
                 elif vr and vr.get("f2p_total", 0) == 0:
-                    log("No step-specific tests listed — treating as passed")
-                    step_passed = True
+                    step_patch_file = extract_patch_file(impl_job)
+                    if step_patch_file and step_patch_file.stat().st_size > 0:
+                        log("No step-specific tests listed but patch exists — treating as passed")
+                        step_passed = True
+                    else:
+                        log("No step-specific tests listed and no changes made — treating as failed")
 
                 if step_passed:
                     log(f"Step {step_id} passed on attempt {attempt}")
