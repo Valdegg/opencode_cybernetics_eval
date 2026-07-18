@@ -9,6 +9,30 @@ See [`EXPERIMENT`](./EXPERIMENT) for the original experimental philosophy, and
 [`docs/cybernetics-framing.rtf`](./docs/cybernetics-framing.rtf) for the full
 cybernetic framing.
 
+## Loop Engineering
+
+Following the terminology introduced by Boris Cherny and popularized by Addy Osmani, **loop engineering** is the design of the control system that replaces the human operator. Unlike prompt, context, or harness engineering, loop engineering does not improve how a person interacts with an LLM—it automates the observation, decision-making, and iteration that a human would otherwise perform between prompts.
+
+This experimental framework evaluates progressively richer loop engineering architectures. Across all tiers, the underlying language model remains unchanged; only the control structure surrounding it evolves.
+
+| Configuration | Human responsibilities | Automated by the loop |
+|--------------|------------------------|------------------------|
+| **Manual Supervision** | Observe results, decide next prompt, verify progress | Single implementation run |
+| **Tier A – Preparation** | Repository understanding | Repository exploration, documentation, and implementation planning |
+| **Tier B – Verified State Transitions** | Step-by-step supervision | Goal-driven implementation, verification, repair, and plan updates |
+| **Tier C – System Convergence** | Final validation and stopping decisions | Whole-system verification, review, convergence, and termination |
+
+### Progression
+
+Each tier removes another responsibility from the human operator:
+
+- **Manual Supervision** – The human observes the repository, evaluates progress, and decides what the agent should do next.
+- **Tier A** – The loop performs repository observation and planning before implementation begins.
+- **Tier B** – The loop supervises implementation through verified state transitions, automatically deciding when to repair, continue, or update the plan.
+- **Tier C** – The loop evaluates the integrated system and determines when the overall task has successfully converged.
+
+Rather than making the language model itself more capable, each tier expands the scope of the automated control loop, progressively replacing human supervision with engineered observation, feedback, and decision-making.
+
 ## Cybernetic Framing
 
 The experimental tiers progressively modify the **observation and feedback architecture** surrounding a fixed base language model. From a cybernetic perspective, the repository is the system being controlled, while the agent acts based on observations rather than direct access to the repository's true state.

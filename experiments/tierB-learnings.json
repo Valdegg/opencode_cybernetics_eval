@@ -1,0 +1,34 @@
+[
+  {
+    "step": 1,
+    "passed": true,
+    "attempts": 1,
+    "review": {
+      "approved": false,
+      "requires_rework": true,
+      "feedback": "Step 1 has not been implemented. The file `src/adaptix/morphing/name_layout/mapping.py` does not contain an `add_alias` method. The `NameMapping` class only has `__init__`, `add_map`, and `resolve`. No alias-tracking data structures exist. None of the four required test cases (`test_add_alias_success`, `test_add_alias_field_not_mapped`, `test_add_alias_alias_conflict_with_source`, `test_add_alias_alias_conflict_with_alias`) have been created in `/app/tests/test_p2p_basic.py`. The `step.patch` file is empty, confirming no changes were applied. The implementation needs to:\n\n1. Add internal state to `NameMapping` to track which targets have been registered via `add_map` (e.g., a set of valid targets or reverse index).\n2. Add internal state to track aliases (e.g., `self._aliases: dict[str, str]` mapping alias \u2192 canonical field name).\n3. Implement `add_alias(field_id, alias)` with three validation checks:\n   - Raise `AliasConflictError` if `field_id` is not a target of any previous `add_map()` call.\n   - Raise `AliasConflictError` if `alias` already exists as a primary source key in `self._map`.\n   - Raise `AliasConflictError` if `alias` already exists as an alias key in `self._aliases`.\n4. Update `resolve()` to check aliases when a key is not a primary source key, returning the canonical field name for matches.\n5. Create the four new test functions.",
+      "plan_updates": "The current plan for Step 1 is correct and complete. No changes to the plan are needed \u2014 the implementation simply needs to be carried out as specified in `current-step.json`."
+    }
+  },
+  {
+    "step": 2,
+    "passed": true,
+    "attempts": 1,
+    "review": null
+  },
+  {
+    "step": 3,
+    "passed": false,
+    "attempts": 3
+  },
+  {
+    "step": 4,
+    "passed": false,
+    "attempts": 3
+  },
+  {
+    "step": 5,
+    "passed": false,
+    "attempts": 3
+  }
+]
