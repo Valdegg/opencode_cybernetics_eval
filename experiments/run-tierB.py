@@ -211,45 +211,47 @@ fi''')
     set -e
 
     # Build reward.json from per-entry results
+    """)
+    new_test_sh += textwrap.dedent("""\
     python3 << 'PYEOF'
-import json, glob, xml.etree.ElementTree as ET, os
-results = {}
-for xml_file in sorted(glob.glob('/logs/verifier/v*.xml')):
-    try:
-        tree = ET.parse(xml_file)
-        for tc in tree.iter('testcase'):
-            name = tc.get('name', 'unknown')
-            failed = any(ch.tag.endswith('failure') or ch.tag.endswith('error') for ch in tc)
-            results[name] = 0 if failed else 1
-    except Exception:
-        pass
-if not results:
-    for log_file in sorted(glob.glob('/logs/verifier/v*.log')):
-        import re
-        m = re.search(r'Exit code: (\d+)', open(log_file).read())
-        if m:
-            results['verif_' + log_file.split('/')[-1].replace('.log','')] = 1 if m.group(1) == '0' else 0
-ttc_failed = int(os.environ.get('TTC_FAILED', '0'))
-ttc_ok = 0 if ttc_failed else 1
-has_ttc = int(os.environ.get('HAS_TTC', '0'))
-passed = sum(1 for v in results.values() if v == 1) + ttc_ok
-total = len(results) + has_ttc
-reward = 1 if total > 0 and passed == total else 0
-out = {
-    'reward': reward,
-    'f2p_total': total,
-    'f2p_passed': passed,
-    'p2p_total': 0,
-    'p2p_passed': 0,
-    'f2p': passed / total if total > 0 else 0.0,
-    'p2p': 1.0,
-    'partial': 1.0 if passed == total else 0.0,
-    'detail': {'results': results, 'ttc_ok': bool(ttc_ok)}
-}
-with open('/logs/verifier/reward.json', 'w') as f:
-    json.dump(out, f)
-print(json.dumps(out))
-PYEOF
+    import json, glob, xml.etree.ElementTree as ET, os
+    results = {}
+    for xml_file in sorted(glob.glob('/logs/verifier/v*.xml')):
+        try:
+            tree = ET.parse(xml_file)
+            for tc in tree.iter('testcase'):
+                name = tc.get('name', 'unknown')
+                failed = any(ch.tag.endswith('failure') or ch.tag.endswith('error') for ch in tc)
+                results[name] = 0 if failed else 1
+        except Exception:
+            pass
+    if not results:
+        for log_file in sorted(glob.glob('/logs/verifier/v*.log')):
+            import re
+            m = re.search(r'Exit code: (\\d+)', open(log_file).read())
+            if m:
+                results['verif_' + log_file.split('/')[-1].replace('.log','')] = 1 if m.group(1) == '0' else 0
+    ttc_failed = int(os.environ.get('TTC_FAILED', '0'))
+    ttc_ok = 0 if ttc_failed else 1
+    has_ttc = int(os.environ.get('HAS_TTC', '0'))
+    passed = sum(1 for v in results.values() if v == 1) + ttc_ok
+    total = len(results) + has_ttc
+    reward = 1 if total > 0 and passed == total else 0
+    out = {
+        'reward': reward,
+        'f2p_total': total,
+        'f2p_passed': passed,
+        'p2p_total': 0,
+        'p2p_passed': 0,
+        'f2p': passed / total if total > 0 else 0.0,
+        'p2p': 1.0,
+        'partial': 1.0 if passed == total else 0.0,
+        'detail': {'results': results, 'ttc_ok': bool(ttc_ok)}
+    }
+    with open('/logs/verifier/reward.json', 'w') as f:
+        json.dump(out, f)
+    print(json.dumps(out))
+    PYEOF
     """)
 
     test_sh.write_text(new_test_sh)
