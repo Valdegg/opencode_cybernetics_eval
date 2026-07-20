@@ -18,7 +18,7 @@ Usage:
     python3 experiments/run-tierB.py --cleanup
     python3 experiments/run-tierB.py --check
 """
-import subprocess, sys, os, shutil, tempfile, re, json, textwrap
+import subprocess, sys, os, shutil, tempfile, re, json, textwrap, uuid
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -89,7 +89,8 @@ def find_latest_job_dir(before=None):
 
 
 def copy_task_dir(source):
-    tmp = Path(tempfile.mkdtemp(prefix=TEMP_PREFIX))
+    safe_name = f"{TEMP_PREFIX}{uuid.uuid4().hex}"
+    tmp = Path(tempfile.gettempdir()) / safe_name
     shutil.copytree(source, tmp, dirs_exist_ok=True, symlinks=True)
     return tmp
 
@@ -322,44 +323,32 @@ def read_file_from_patch(patch_path, file_pattern):
 def apply_patch_to_src(task_dir, patch_path):
     """Apply a git model.patch to environment/src/ in a task directory copy.
     
-    The patch is a `git diff --binary _baseline HEAD`. We parse each file's
-    final content (the '+' lines in each hunk) and write it to the matching
-    path under environment/src/.
+    Uses `git apply` in a temporary git repo rather than a hand-rolled parser.
+    This correctly handles context lines, additions, removals, and lines
+    outside hunk ranges — all of which the previous custom parser got wrong.
     """
     if not patch_path or patch_path.stat().st_size == 0:
         return False
-    content = patch_path.read_text()
-    file_diffs = re.split(r'^diff --git ', content, flags=re.MULTILINE)
-    src_dir = task_dir / "environment" / "src"
-    applied = 0
-    for diff in file_diffs:
-        if not diff.strip():
-            continue
-        m = re.match(r'^a/(\S+) b/\S+', diff)
-        if not m:
-            continue
-        filepath = m.group(1)
-        if not filepath.startswith("src/"):
-            continue
-        lines = diff.split('\n')
-        in_hunk = False
-        extracted = []
-        for line in lines:
-            line = line.rstrip('\r')
-            if line.startswith('@@ '):
-                in_hunk = True
-                continue
-            if line.startswith('--- ') or line.startswith('+++ ') or line.startswith('\\ '):
-                continue
-            if in_hunk:
-                extracted.append(line[1:] if line.startswith('+') else line[1:])
-        if extracted:
-            target = src_dir / filepath[4:]
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text('\n'.join(extracted) + '\n')
-            applied += 1
-    log(f"Applied {applied} files from patch to src/")
-    return applied > 0
+    env_dir = task_dir / "environment"
+    gitignore = env_dir / ".gitignore"
+    if not gitignore.exists():
+        gitignore.write_text("__pycache__/\n*.pyc\n")
+    subprocess.run(["git", "init"], cwd=env_dir, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=env_dir, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "base", "--allow-empty"],
+        cwd=env_dir, capture_output=True
+    )
+    result = subprocess.run(
+        ["git", "apply", str(patch_path)],
+        cwd=env_dir, capture_output=True, text=True
+    )
+    shutil.rmtree(env_dir / ".git", ignore_errors=True)
+    if result.returncode != 0:
+        log(f"git apply failed: {result.stderr.strip()}")
+        return False
+    log("Applied patch via git apply")
+    return True
 
 
 def save_results(job_dir, config_name, label):
@@ -469,8 +458,11 @@ def main():
 
             (docs_dir / "current-step.json").write_text(json.dumps(step, indent=2))
 
-            if attempt > 1:
-                (docs_dir / "repair-feedback.json").write_text(json.dumps({
+            repair_docs = cumulative_dir / "environment" / "docs"
+            repair_docs.mkdir(parents=True, exist_ok=True)
+            repair_fb = repair_docs / "repair-feedback.json"
+            if attempt > 1 and not repair_fb.exists():
+                repair_fb.write_text(json.dumps({
                     "step": step,
                     "attempt": attempt,
                     "previous_failure": f"Step-specific tests failed on attempt {attempt - 1}"
@@ -512,10 +504,87 @@ def main():
                         log("No step-specific tests listed and no changes made — treating as failed")
 
                 if step_passed:
-                    log(f"Step {step_id} passed on attempt {attempt}")
+                    log(f"Step {step_id} passed implement on attempt {attempt}")
                     step_patch_file = extract_patch_file(impl_job)
-                    implement_ok = True
+                    # implement_ok is NOT set here — it is only set AFTER
+                    # review approves below.  If implement passes but review
+                    # rejects (or subsequent repair attempts error out),
+                    # implement_ok stays False and the step is properly
+                    # marked as failed.
                     shutil.rmtree(build_dir, ignore_errors=True)
+
+                    # --- Review ---
+                    # Patch is NOT yet applied to cumulative_dir.  It is only
+                    # applied to the review copy so the reviewer can inspect it.
+                    # If review passes, we apply to cumulative_dir below.
+                    # If review requests rework, we apply before the continue
+                    # so the next attempt builds on top.  If review finally
+                    # rejects, the patch is discarded and cumulative_dir stays
+                    # clean — no unverified state transition leaks forward.
+                    log(f"--- Reviewing step {step_id} ---")
+                    review_dir = copy_task_dir(cumulative_dir)
+                    docs_dir = review_dir / "environment" / "docs"
+                    docs_dir.mkdir(parents=True, exist_ok=True)
+                    (docs_dir / "current-step.json").write_text(json.dumps(step, indent=2))
+
+                    if step_patch_file:
+                        apply_patch_to_src(review_dir, step_patch_file)
+                        shutil.copy2(step_patch_file, docs_dir / "step.patch")
+                        log(f"Copied step patch to docs/step.patch ({step_patch_file.stat().st_size} bytes)")
+
+                    inject_docs_into_dockerfile(review_dir)
+                    write_pre_artifacts(review_dir)
+
+                    before_review = find_latest_job_dir()
+                    run_pier(REVIEW_CONFIG, review_dir)
+                    review_job = find_latest_job_dir(before=before_review)
+
+                    review_approved = True
+                    review_data = None
+                    if review_job:
+                        save_results(review_job, f"tierB-step{step_id}-review", f"Step {step_id} review")
+                        rp = extract_patch_file(review_job)
+                        rj_str = read_file_from_patch(rp, r'docs/review\.json')
+                        if rj_str:
+                            try:
+                                review_data = json.loads(rj_str)
+                                log(f"Review: approved={review_data.get('approved')}, rework={review_data.get('requires_rework')}")
+                                review_approved = review_data.get("approved", False)
+                                if not review_approved:
+                                    feedback = review_data.get("feedback", "No feedback")
+                                    log(f"  Not approved: {feedback[:300]}")
+                                    if review_data.get("requires_rework") and attempt < MAX_REPAIR_ATTEMPTS:
+                                        log(f"  Step needs rework — re-entering repair loop")
+                                        # Apply patch so the repair attempt builds on it
+                                        if step_patch_file:
+                                            apply_patch_to_src(cumulative_dir, step_patch_file)
+                                        # Write repair feedback for next attempt
+                                        repair = {"step": step, "attempt": attempt + 1,
+                                                  "previous_failure": feedback}
+                                        repair_docs = cumulative_dir / "environment" / "docs"
+                                        repair_docs.mkdir(parents=True, exist_ok=True)
+                                        (repair_docs / "repair-feedback.json").write_text(
+                                            json.dumps(repair))
+                                        shutil.rmtree(review_dir, ignore_errors=True)
+                                        continue
+                                    # Final rejection — exhausted repair attempts.
+                                    # Patch is NOT applied to cumulative_dir.
+                                    implement_ok = False
+                                    if review_data.get("plan_updates"):
+                                        log(f"  Plan update: {review_data['plan_updates'][:300]}")
+                            except json.JSONDecodeError:
+                                log("Review JSON unparseable — treating as approved")
+
+                    shutil.rmtree(review_dir, ignore_errors=True)
+
+                    if review_approved:
+                        implement_ok = True
+                        # Apply patch to cumulative state only after review passes
+                        if step_patch_file:
+                            apply_patch_to_src(cumulative_dir, step_patch_file)
+                        log(f"Step {step_id} fully approved")
+                    else:
+                        log(f"Step {step_id} rejected after {MAX_REPAIR_ATTEMPTS} attempts")
                     break
             else:
                 log(f"No Pier job produced for attempt {attempt}")
@@ -527,62 +596,7 @@ def main():
             learnings.append({"step": step_id, "passed": False, "attempts": MAX_REPAIR_ATTEMPTS})
             continue
 
-        # --- Apply step patch to cumulative dir ---
-        # After successful implementation, apply this step's changes
-        # to cumulative_dir so the NEXT step builds on top of them.
-        if step_patch_file:
-            apply_patch_to_src(cumulative_dir, step_patch_file)
-
-        # --- Review ---
-        # Reviewer gets a fresh copy of cumulative_dir (pre-step state),
-        # then we apply the step patch and write step.patch to docs/
-        # so the reviewer can see exactly what changed.
-        log(f"--- Reviewing step {step_id} ---")
-
-        review_dir = copy_task_dir(cumulative_dir)
-        docs_dir = review_dir / "environment" / "docs"
-        docs_dir.mkdir(parents=True, exist_ok=True)
-
-        (docs_dir / "current-step.json").write_text(json.dumps(step, indent=2))
-
-        # Apply step patch so reviewer sees the code post-changes
-        if step_patch_file:
-            apply_patch_to_src(review_dir, step_patch_file)
-
-            # Also include the raw patch file so the reviewer can read the diff
-            shutil.copy2(step_patch_file, docs_dir / "step.patch")
-            log(f"Copied step patch to docs/step.patch ({step_patch_file.stat().st_size} bytes)")
-
-        inject_docs_into_dockerfile(review_dir)
-        write_pre_artifacts(review_dir)
-
-        before_review = find_latest_job_dir()
-        run_pier(REVIEW_CONFIG, review_dir)
-        review_job = find_latest_job_dir(before=before_review)
-
-        review_data = None
-        if review_job:
-            save_results(review_job, f"tierB-step{step_id}-review", f"Step {step_id} review")
-
-            rp = extract_patch_file(review_job)
-            rj_str = read_file_from_patch(rp, r'docs/review\.json')
-            if rj_str:
-                try:
-                    review_data = json.loads(rj_str)
-                    log(f"Review: approved={review_data.get('approved')}, rework={review_data.get('requires_rework')}")
-
-                    if not review_data.get("approved"):
-                        log(f"  Not approved: {review_data.get('feedback', '')[:300]}")
-                        if review_data.get("requires_rework"):
-                            log(f"  Step needs rework — would re-enter repair loop")
-                        if review_data.get("plan_updates"):
-                            log(f"  Plan update suggested: {review_data['plan_updates'][:300]}")
-                except json.JSONDecodeError:
-                    log("Review JSON unparseable")
-
-        shutil.rmtree(review_dir, ignore_errors=True)
-
-        # --- Persist ---
+        # --- Persist step learnings ---
         learnings.append({
             "step": step_id,
             "passed": True,

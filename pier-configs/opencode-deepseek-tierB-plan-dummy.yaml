@@ -1,8 +1,8 @@
 agents:
   - name: opencode
     model_name: opencode/deepseek-v4-flash-free
-    override_timeout_sec: 1200
-    max_timeout_sec: 1200
+    override_timeout_sec: 1800
+    max_timeout_sec: 1800
     kwargs:
       agent: tierB-planner
       opencode_config:
