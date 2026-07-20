@@ -122,17 +122,9 @@ def create_task_dir(issue):
     env_dir.mkdir()
     (env_dir / "src").mkdir()
     shutil.move(str(clone_dir), str(env_dir / "src" / REPO_NAME))
-    tests_dir = env_dir / "tests"
-    tests_dir.mkdir()
-    # Copy docs/learnings.md into the task's docs/ so planner can read it
-    task_docs = tmp / "environment" / "docs"
-    task_docs.mkdir(parents=True, exist_ok=True)
-    src_learnings = env_dir / "src" / REPO_NAME / "docs" / "learnings.md"
-    if src_learnings.exists():
-        shutil.copy2(src_learnings, task_docs / "learnings.md")
-        log("Injected learnings.md into task docs/")
     title = issue["title"]
     body = issue.get("body", "")
+    # environment/Dockerfile (agent container)
     dockerfile = f"""FROM python:3.12
 RUN apt-get update -qq && apt-get install -y -qq git curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -145,13 +137,73 @@ RUN pip install --no-cache-dir pytest && \\
     git add -A && git commit -m "Initial commit" && git tag _baseline
 CMD ["/bin/bash"]"""
     (env_dir / "Dockerfile").write_text(dockerfile)
+    # tests/ directory at task root (verifier container)
+    tests_dir = tmp / "tests"
+    tests_dir.mkdir()
+    tests_src = tests_dir / "src"
+    shutil.copytree(env_dir / "src", tests_src, dirs_exist_ok=True, symlinks=True)
+    (tests_dir / "Dockerfile").write_text(f"""FROM python:3.12
+RUN apt-get update -qq && apt-get install -y -qq git && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+ENV PYTHONPATH=/app/src
+COPY src/ /app/src/
+COPY test.sh /tests/test.sh
+RUN pip install --no-cache-dir pytest && \\
+    git init && git config user.email "dev@example.com" && \\
+    git config user.name "Developer" && \\
+    git add -A && git commit -m "Baseline commit" && \\
+    git tag _baseline && chmod +x /tests/test.sh
+""")
+    (tests_dir / "test.sh").write_text("#!/bin/bash\nexit 0\n")
+    (tests_dir / "test.sh").chmod(0o755)
+    # Copy docs/learnings.md into the task's docs/ so planner can read it
+    task_docs = tmp / "environment" / "docs"
+    task_docs.mkdir(parents=True, exist_ok=True)
+    src_learnings = env_dir / "src" / REPO_NAME / "docs" / "learnings.md"
+    if src_learnings.exists():
+        shutil.copy2(src_learnings, task_docs / "learnings.md")
+        log("Injected learnings.md into task docs/")
     instruction = f"# {title}\n\n{body}\n\nIMPORTANT: Work in /app and commit all changes when done."
     (tmp / "instruction.md").write_text(instruction)
-    task_toml = """[agent]
-timeout_sec = 600.0
+    name_slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')[:40]
+    slug = name_slug if name_slug else "task"
+    task_toml = f'''schema_version = "1.1"
+artifacts = ["/logs/artifacts/model.patch"]
+[task]
+name = "datacurve/{slug}"
+description = "{body.strip()[:200]}"
+authors = []
+keywords = []
+[metadata]
+ext_id = "{slug}"
+task_id = "{slug}"
+display_title = "{title[:80]}"
+display_description = "{body.strip()[:200]}"
+category = "feature_request"
+language = "python"
+repository_url = ""
+base_commit_hash = "HEAD"
+[verifier]
+environment_mode = "separate"
+timeout_sec = 60.0
+[verifier.env]
+[verifier.environment]
 build_timeout_sec = 120.0
 cpus = 1
-memory_mb = 512"""
+memory_mb = 512
+storage_mb = 1024
+allow_internet = false
+[agent]
+timeout_sec = 600.0
+[environment]
+build_timeout_sec = 120.0
+cpus = 1
+memory_mb = 512
+storage_mb = 1024
+allow_internet = false
+mcp_servers = []
+[environment.env]
+[solution.env]'''
     (tmp / "task.toml").write_text(task_toml)
     return tmp, env_dir / "src" / REPO_NAME
 

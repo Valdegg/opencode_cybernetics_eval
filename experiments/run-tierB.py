@@ -54,14 +54,16 @@ def check_prerequisites():
     log("Prerequisites OK")
 
 
-def run_pier(config_file, task_path, n_attempts=1):
+def run_pier(config_file, task_path, n_attempts=1, disable_verification=False):
     cmd = [
         "pier", "run",
         "--config", str(config_file),
         "--path", str(task_path),
         "--n-attempts", str(n_attempts),
-        "--yes"
     ]
+    if disable_verification:
+        cmd.append("--disable-verification")
+    cmd.append("--yes")
     log(f"Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True)
     if result.stdout:
@@ -480,7 +482,7 @@ def main():
     plan_dir = copy_task_dir(TASK_DIR)
     write_pre_artifacts(plan_dir)
 
-    run_pier(PLAN_CONFIG, plan_dir)
+    run_pier(PLAN_CONFIG, plan_dir, disable_verification=True)
     phase0_job = find_latest_job_dir(before=before_job)
 
     if not phase0_job:
@@ -566,7 +568,7 @@ def main():
             write_pre_artifacts(build_dir)
 
             before_impl = find_latest_job_dir()
-            run_pier(IMPLEMENT_CONFIG, build_dir)
+            run_pier(IMPLEMENT_CONFIG, build_dir, disable_verification=False)
             impl_job = find_latest_job_dir(before=before_impl)
 
             if impl_job:
@@ -650,7 +652,7 @@ def main():
                     write_pre_artifacts(review_dir)
 
                     before_review = find_latest_job_dir()
-                    run_pier(REVIEW_CONFIG, review_dir)
+                    run_pier(REVIEW_CONFIG, review_dir, disable_verification=True)
                     review_job = find_latest_job_dir(before=before_review)
 
                     review_approved = True
