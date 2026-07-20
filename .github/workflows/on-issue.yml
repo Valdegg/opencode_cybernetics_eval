@@ -1,0 +1,15 @@
+name: Forward issue to listener
+on:
+  issues:
+    types: [opened, reopened]
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify listener
+        run: |
+          curl -s -X POST "${{ secrets.LISTENER_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: issues" \
+            -H "X-Hub-Signature-256: ${{ secrets.LISTENER_SECRET }}" \
+            -d '${{ toJson(github.event) }}'
