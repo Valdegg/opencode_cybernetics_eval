@@ -456,6 +456,16 @@ def main():
         if sys.argv[1] == "--check":
             check_prerequisites()
             return
+        if sys.argv[1] == "--task" and len(sys.argv) > 2:
+            global TASK_DIR
+            candidate = Path(sys.argv[2])
+            if candidate.is_dir():
+                TASK_DIR = candidate
+            else:
+                TASK_DIR = PROJECT_ROOT / "deep-swe" / "tasks" / candidate.name
+            log(f"Task dir: {TASK_DIR}")
+        elif sys.argv[1].startswith("--"):
+            pass  # unknown flag, will be caught below
 
     check_prerequisites()
 
