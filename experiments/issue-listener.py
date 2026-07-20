@@ -8,16 +8,19 @@ Two modes:
 In both modes, unprocessed issues (no "running"/"done" label) are picked up.
 For each issue, the listener:
   1. Clones the repo to a temp task directory
-  2. Writes the issue body as instruction.md
-  3. Spawns run-tierB.py on that task directory
-  4. Posts results back as a comment on the issue
+  2. Injects docs/learnings.md (accumulated knowledge from past runs)
+  3. Writes the issue body as instruction.md
+  4. Spawns run-tierB.py on that task directory
+  5. Extracts new learnings from the run output and appends them
+  6. Commits the updated learnings back to the repo
+  7. Posts results as a comment on the issue
 
 Usage:
   export GITHUB_TOKEN=ghp_...
   python experiments/issue-listener.py --webhook 8000
   python experiments/issue-listener.py --poll 60
 """
-import subprocess, sys, os, json, threading, time, http.server, hmac, hashlib, tempfile, shutil
+import subprocess, sys, os, json, threading, time, http.server, hmac, hashlib, tempfile, shutil, re
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -26,6 +29,7 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "Valdegg/opencode_cybernetics_eval")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
 CLONE_URL = f"https://x-access-token:{GITHUB_TOKEN}@github.com/{GITHUB_REPO}.git"
+REPO_NAME = GITHUB_REPO.split("/")[1]
 LABEL_RUNNING = "running"
 LABEL_DONE = "done"
 
@@ -49,23 +53,84 @@ def post_comment(issue_number, body):
     gh_api("POST", f"/issues/{issue_number}/comments", {"body": body})
 
 
+def extract_learnings(stdout, stderr):
+    """Parse pipeline output for review feedback and step summaries."""
+    entries = []
+    combined = stdout + "\n" + stderr
+    # Find review feedback lines: "Not approved: ..."
+    for m in re.finditer(r"Not approved: (.+)", combined):
+        text = m.group(1).strip()[:500]
+        if text:
+            entries.append(f"- Review rejection: {text}")
+    # Find plan updates
+    for m in re.finditer(r"Plan update: (.+)", combined):
+        text = m.group(1).strip()[:300]
+        if text:
+            entries.append(f"- Plan update: {text}")
+    # Find step pass/fail
+    for m in re.finditer(r"Step \d+: (PASS|FAIL)", combined):
+        entries.append(f"- {m.group(0)}")
+    return entries
+
+
+def commit_learnings(clone_dir, issue_number, new_entries):
+    """Append new learnings to docs/learnings.md and push."""
+    learnings_file = clone_dir / "docs" / "learnings.md"
+    if not learnings_file.exists():
+        return
+    if not new_entries:
+        return
+    ts = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
+    header = f"\n## Run for issue #{issue_number} ({ts})\n"
+    body = "\n".join(new_entries)
+    with open(learnings_file, "a") as f:
+        f.write(header + body + "\n")
+    result = subprocess.run(
+        ["git", "add", "docs/learnings.md"],
+        cwd=clone_dir, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        log(f"git add failed: {result.stderr.strip()}")
+        return
+    result = subprocess.run(
+        ["git", "commit", "-m", f"Auto-learnings from issue #{issue_number}"],
+        cwd=clone_dir, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        log(f"git commit failed: {result.stderr.strip()}")
+        return
+    result = subprocess.run(
+        ["git", "push", "origin", "main"],
+        cwd=clone_dir, capture_output=True, text=True, timeout=60
+    )
+    if result.returncode != 0:
+        log(f"git push failed: {result.stderr.strip()}")
+        return
+    log(f"Committed {len(new_entries)} learnings to docs/learnings.md")
+
+
 def create_task_dir(issue):
-    """Clone the repo and inject the issue as instruction.md into a temp dir."""
+    """Clone the repo and inject issue + learnings into a temp task dir."""
     tmp = Path(tempfile.mkdtemp(prefix="issue-task-"))
     log(f"Cloning {GITHUB_REPO} into {tmp}")
     subprocess.run(
         ["git", "clone", "--depth=1", CLONE_URL, str(tmp / "src")],
         capture_output=True, text=True, timeout=120
     )
-    src_dir = tmp / "src"
-    # Create standard task structure
+    clone_dir = tmp / "src"
     env_dir = tmp / "environment"
     env_dir.mkdir()
     (env_dir / "src").mkdir()
-    shutil.move(str(src_dir), str(env_dir / "src" / GITHUB_REPO.split("/")[1]))
+    shutil.move(str(clone_dir), str(env_dir / "src" / REPO_NAME))
     tests_dir = env_dir / "tests"
     tests_dir.mkdir()
-    # Basic Dockerfile — uses the actual repo
+    # Copy docs/learnings.md into the task's docs/ so planner can read it
+    task_docs = tmp / "environment" / "docs"
+    task_docs.mkdir(parents=True, exist_ok=True)
+    src_learnings = env_dir / "src" / REPO_NAME / "docs" / "learnings.md"
+    if src_learnings.exists():
+        shutil.copy2(src_learnings, task_docs / "learnings.md")
+        log("Injected learnings.md into task docs/")
     title = issue["title"]
     body = issue.get("body", "")
     dockerfile = f"""FROM python:3.12
@@ -80,17 +145,15 @@ RUN pip install --no-cache-dir pytest && \\
     git add -A && git commit -m "Initial commit" && git tag _baseline
 CMD ["/bin/bash"]"""
     (env_dir / "Dockerfile").write_text(dockerfile)
-    # Write instruction.md
     instruction = f"# {title}\n\n{body}\n\nIMPORTANT: Work in /app and commit all changes when done."
     (tmp / "instruction.md").write_text(instruction)
-    # Minimal task.toml
-    task_toml = f"""[agent]
+    task_toml = """[agent]
 timeout_sec = 600.0
 build_timeout_sec = 120.0
 cpus = 1
 memory_mb = 512"""
     (tmp / "task.toml").write_text(task_toml)
-    return tmp
+    return tmp, env_dir / "src" / REPO_NAME
 
 
 def run_pipeline(issue):
@@ -99,7 +162,7 @@ def run_pipeline(issue):
     log(f"Issue #{number}: {title}")
     add_label(number, LABEL_RUNNING)
     post_comment(number, f"**Running Tier B pipeline** for: {title}")
-    task_dir = create_task_dir(issue)
+    task_dir, clone_dir = create_task_dir(issue)
     try:
         start = time.time()
         cmd = RUN_TIER_B + ["--task", str(task_dir)]
@@ -108,9 +171,15 @@ def run_pipeline(issue):
         elapsed_str = f"{elapsed // 60:.0f}m {elapsed % 60:.0f}s"
     except subprocess.TimeoutExpired:
         elapsed_str = ">2h"
-        result = subprocess.CompletedProcess(cmd, -1, stdout=b"", stderr=b"TIMEOUT")
-    finally:
-        shutil.rmtree(task_dir, ignore_errors=True)
+        result = subprocess.CompletedProcess(cmd, -1, stdout="", stderr="TIMEOUT")
+    except Exception as e:
+        elapsed_str = "error"
+        result = subprocess.CompletedProcess(cmd, -1, stdout="", stderr=str(e))
+    # Extract learnings and commit back to repo
+    new_learnings = extract_learnings(result.stdout or "", result.stderr or "")
+    if new_learnings:
+        commit_learnings(clone_dir, number, new_learnings)
+    shutil.rmtree(task_dir, ignore_errors=True)
     if result.returncode == 0:
         summary = "**Pipeline completed successfully**"
     else:

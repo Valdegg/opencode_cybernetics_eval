@@ -37,6 +37,9 @@ agents:
 
               PHASE 1 — REPOSITORY OBSERVATION
               - Read the task instruction carefully.
+              - If `/app/docs/learnings.md` exists, read it — it contains
+                accumulated knowledge from previous runs (mistakes to avoid,
+                patterns that work).
               - Explore the repository structure.
               - Identify the relevant components and their interactions.
               - Examine existing tests to understand expected behaviour.
