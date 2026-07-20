@@ -54,11 +54,20 @@ agents:
               Write a machine-parseable plan to `/app/docs/plan.json`.
 
               Decompose the task into sequential steps. Each step should be:
-              - Independently verifiable (has verification mechanisms that can pass/fail)
               - Small enough to implement in one session
               - Ordered so that step N builds on step N-1
-              - New test functions must be listed in `tests_to_create` AND their
-                execution must be listed as a `verification` entry with type `new_test`
+
+              EVERY step MUST define how its goal state is confirmed, in TWO ways:
+              1. `verification[]` — at least ONE programmatic check that passes only
+                 when the goal state is reached. NEVER leave this empty. Prefer a
+                 `new_test` you specify; if no unit test fits, use an `execution`
+                 check (import the code and assert the new behaviour) or a
+                 `typecheck`/`build`. A step with no runnable programmatic check is
+                 invalid.
+              2. `review_checklist[]` — concrete, individually checkable statements
+                 that together confirm the goal state, for the review agent to fill in.
+              - New test functions must be listed in `tests_to_create` AND run via a
+                `verification` entry with type `new_test`.
 
               The JSON schema is:
               ```json
@@ -76,12 +85,16 @@ agents:
                       {
                         "type": "existing_test | new_test | typecheck | build | execution",
                         "command": "the exact shell command to run",
-                        "reason": "why this observation is needed"
+                        "reason": "which goal_state item this confirms"
                       }
                     ],
                     "tests_to_create": [
                       "list of test function names that the agent must write",
                       "e.g. test_validate_email_none"
+                    ],
+                    "review_checklist": [
+                      "concrete pass/fail statement confirming the goal state",
+                      "e.g. 'validate_email(None) raises ValueError'"
                     ]
                   }
                 ]
@@ -136,6 +149,12 @@ agents:
                     ],
                     "tests_to_create": [
                       "test_validate_email_none"
+                    ],
+                    "review_checklist": [
+                      "validate_email() rejects invalid formats",
+                      "validate_email() accepts valid formats",
+                      "validate_email(None) raises ValueError",
+                      "existing validation behaviour is unchanged"
                     ]
                   }
                 ]
@@ -147,6 +166,9 @@ agents:
               - You CANNOT run tests.
               - You CANNOT implement anything.
               - The `plan.json` must be valid JSON.
+              - EVERY step MUST have a non-empty `verification[]` with at least one
+                programmatic check (new_test / existing_test / typecheck / build /
+                execution), and a non-empty `review_checklist[]`.
               - Every test name in `verification[].command` with type `new_test` must
                 appear in `tests_to_create[]`.
               - Commit your work: `git add docs/ && git commit -m "Planning complete"`

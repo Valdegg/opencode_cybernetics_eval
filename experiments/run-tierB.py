@@ -128,14 +128,40 @@ def inject_docs_into_dockerfile(task_dir):
     return True
 
 
-def inject_step_verifier(task_dir, verification, tests_to_create=None):
+def inject_step_verifier(task_dir, verification, tests_to_create=None, prior_patches=None):
     """Replace the standard test runner with one that processes the step's
     verification[] array. Handles existing_test, new_test, typecheck, build,
-    execution types. Leaves tests/Dockerfile intact."""
+    execution types.
+
+    prior_patches: ordered accepted step patches (steps 1..N-1). They are baked
+    into the verifier image and applied (by test.sh) before the trial's
+    model.patch, so the verifier reconstructs the cumulative state. The
+    model.patch is only step N's increment and would not apply on the original
+    verifier base for N>1."""
     test_sh = task_dir / "tests" / "test.sh"
 
     if not verification:
         verification = []
+
+    # Bake accepted prior-step patches into the verifier image (test.sh applies
+    # /tests/prior_*.patch before model.patch). Names are zero-padded so the
+    # glob applies them in order.
+    if prior_patches:
+        tests_dir = task_dir / "tests"
+        dockerfile = tests_dir / "Dockerfile"
+        df = dockerfile.read_text() if dockerfile.exists() else ""
+        copy_lines, idx = [], 0
+        for pp in prior_patches:
+            pp = Path(pp)
+            if not pp.exists() or pp.stat().st_size == 0:
+                continue
+            name = f"prior_{idx:02d}.patch"
+            shutil.copy2(pp, tests_dir / name)
+            copy_lines.append(f"COPY {name} /tests/{name}")
+            idx += 1
+        needle = "COPY test.sh /tests/test.sh"
+        if copy_lines and needle in df and "prior_00.patch" not in df:
+            dockerfile.write_text(df.replace(needle, needle + "\n" + "\n".join(copy_lines)))
 
     # Build the shell script that runs each verification entry
     cmds = []
@@ -192,9 +218,18 @@ fi''')
     trap 'mkdir -p /logs/verifier; echo -1 > /logs/verifier/reward.txt 2>/dev/null || true' EXIT
     cd /app || exit 6
 
+    # Reconstruct cumulative state (steps 1..N-1) before the step-N model.patch.
+    for p in /tests/prior_*.patch; do
+      [ -f "$p" ] || continue
+      git apply "$p" 2>/dev/null || git apply --3way "$p" 2>/dev/null || echo "  [prior] $p did not apply cleanly"
+    done
+
     MODEL_PATCH="/logs/artifacts/model.patch"
     if [ -f "$MODEL_PATCH" ]; then
-      if ! git apply "$MODEL_PATCH" 2>/dev/null; then
+      if   git apply "$MODEL_PATCH" 2>/dev/null; then :
+      elif git apply --3way "$MODEL_PATCH" 2>/dev/null; then :
+      elif git apply --recount --whitespace=nowarn "$MODEL_PATCH" 2>/dev/null; then :
+      else
         echo '{{"reward": 0, "f2p_total": 0, "f2p_passed": 0, "p2p_total": 0, "p2p_passed": 0, "f2p": 0.0, "p2p": 0.0, "partial": 0.0}}' > /logs/verifier/reward.json
         exit 0
       fi
@@ -373,7 +408,47 @@ def cleanup_temp_dirs():
         log(f"Cleaned up {count} temp dirs")
 
 
+def missing_test_functions(patch_file, tests_to_create):
+    """Return the subset of tests_to_create that do NOT appear as an added
+    `def <name>(...)` in the step's model.patch — i.e. tests the implementer
+    was required to write but did not."""
+    if not tests_to_create:
+        return []
+    if not patch_file or not patch_file.exists():
+        return list(tests_to_create)
+    added = "\n".join(l[1:] for l in patch_file.read_text().splitlines()
+                      if l.startswith("+") and not l.startswith("+++"))
+    missing = []
+    for name in tests_to_create:
+        if not re.search(r'^\s*def\s+' + re.escape(name) + r'\s*\(', added, re.M):
+            missing.append(name)
+    return missing
+
+
+def write_repair_feedback(cumulative_dir, step, next_attempt, reason):
+    """Write targeted repair feedback the next implement attempt will read."""
+    repair_docs = cumulative_dir / "environment" / "docs"
+    repair_docs.mkdir(parents=True, exist_ok=True)
+    (repair_docs / "repair-feedback.json").write_text(json.dumps({
+        "step": step, "attempt": next_attempt, "previous_failure": reason
+    }))
+
+
+def clear_repair_feedback(cumulative_dir):
+    """Remove any stale repair feedback so it does not leak across steps."""
+    fb = cumulative_dir / "environment" / "docs" / "repair-feedback.json"
+    if fb.exists():
+        fb.unlink()
+
+
 def main():
+    if "--modal" in sys.argv:
+        global PLAN_CONFIG, IMPLEMENT_CONFIG, REVIEW_CONFIG
+        PLAN_CONFIG = PIER_CONFIGS / "opencode-deepseek-tierB-plan-dummy-modal.yaml"
+        IMPLEMENT_CONFIG = PIER_CONFIGS / "opencode-deepseek-tierB-implement-dummy-modal.yaml"
+        REVIEW_CONFIG = PIER_CONFIGS / "opencode-deepseek-tierB-review-dummy-modal.yaml"
+        log("Using Modal configs (plan/implement/review)")
+
     if len(sys.argv) > 1:
         if sys.argv[1] == "--cleanup":
             cleanup_temp_dirs()
@@ -433,6 +508,7 @@ def main():
     # ================================================================
     cumulative_dir = copy_task_dir(TASK_DIR)
     learnings = []
+    accepted_patches = []  # ordered accepted step patches, layered into each verifier
 
     for step in steps:
         step_id = step["id"]
@@ -441,6 +517,8 @@ def main():
         log("=" * 60)
         log(f"STEP {step_id}: {step['objective']}")
         log("=" * 60)
+
+        clear_repair_feedback(cumulative_dir)  # no stale feedback from prior step
 
         # --- Implement + verify loop ---
         # Starts from cumulative_dir (has steps 1..N-1), so the agent
@@ -472,7 +550,8 @@ def main():
             inject_step_verifier(
                 build_dir,
                 step.get("verification", []),
-                step.get("tests_to_create", [])
+                step.get("tests_to_create", []),
+                prior_patches=accepted_patches,
             )
             write_pre_artifacts(build_dir)
 
@@ -490,18 +569,43 @@ def main():
                 # Check step-level tests passed (all listed tests green)
                 step_passed = False
                 trial_errored = has_trial_exception(impl_job)
+                tests_to_create = step.get("tests_to_create", [])
+                step_patch_file = extract_patch_file(impl_job)
+                patch_ok = bool(step_patch_file and step_patch_file.stat().st_size > 0)
 
                 if trial_errored:
                     log(f"Agent errored in attempt {attempt} — treating as failed")
+                    write_repair_feedback(cumulative_dir, step, attempt + 1,
+                        "The agent errored before finishing. Implement the step and "
+                        "create every function listed in tests_to_create[].")
+                elif tests_to_create:
+                    # Step declares tests: they MUST be created AND must run.
+                    missing = missing_test_functions(step_patch_file, tests_to_create)
+                    if missing:
+                        log(f"Step {step_id}: required tests NOT created: {missing} — failing")
+                        write_repair_feedback(cumulative_dir, step, attempt + 1,
+                            "You did NOT create these required test functions: "
+                            f"{', '.join(missing)}. Add each as `def <name>(...)` in the "
+                            "appropriate test file, then implement the code so they pass.")
+                    elif not vr or vr.get("f2p_total", 0) == 0:
+                        log(f"Step {step_id}: tests declared but 0 collected/ran — failing")
+                        write_repair_feedback(cumulative_dir, step, attempt + 1,
+                            "Your test functions exist but 0 tests were collected/run. Ensure "
+                            "they are importable, in the right file, and free of import errors, "
+                            "then make them pass.")
+                    else:
+                        step_passed = vr["f2p_passed"] == vr["f2p_total"]
+                        if not step_passed:
+                            write_repair_feedback(cumulative_dir, step, attempt + 1,
+                                f"Only {vr['f2p_passed']}/{vr['f2p_total']} step tests passed. "
+                                "Fix the failing ones.")
                 elif vr and vr.get("f2p_total", 0) > 0:
                     step_passed = vr["f2p_passed"] == vr["f2p_total"]
-                elif vr and vr.get("f2p_total", 0) == 0:
-                    step_patch_file = extract_patch_file(impl_job)
-                    if step_patch_file and step_patch_file.stat().st_size > 0:
-                        log("No step-specific tests listed but patch exists — treating as passed")
-                        step_passed = True
-                    else:
-                        log("No step-specific tests listed and no changes made — treating as failed")
+                elif patch_ok:
+                    log("No step tests declared but patch exists — treating as passed")
+                    step_passed = True
+                else:
+                    log("No step tests declared and no changes made — treating as failed")
 
                 if step_passed:
                     log(f"Step {step_id} passed implement on attempt {attempt}")
@@ -582,6 +686,7 @@ def main():
                         # Apply patch to cumulative state only after review passes
                         if step_patch_file:
                             apply_patch_to_src(cumulative_dir, step_patch_file)
+                            accepted_patches.append(step_patch_file)
                         log(f"Step {step_id} fully approved")
                     else:
                         log(f"Step {step_id} rejected after {MAX_REPAIR_ATTEMPTS} attempts")

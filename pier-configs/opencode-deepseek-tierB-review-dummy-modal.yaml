@@ -92,7 +92,7 @@ agents:
             options:
               baseURL: "https://opencode.ai/zen/v1"
 environment:
-  type: docker
+  type: modal
   delete: true
   override_cpus: 1
   override_memory_mb: 512

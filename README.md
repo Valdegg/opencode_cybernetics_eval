@@ -9,6 +9,8 @@ See [`EXPERIMENT`](./EXPERIMENT) for the original experimental philosophy, and
 [`docs/cybernetics-framing.rtf`](./docs/cybernetics-framing.rtf) for the full
 cybernetic framing.
 
+📊 **[Slide deck: Cybernetic Loop Engineering](https://claude.ai/code/artifact/aaaf977b-159d-4b0a-b996-318b30f1cae3)** — a short visual overview of the tiers and the cybernetic framing.
+
 ## Loop Engineering
 
 Following the terminology introduced by Boris Cherny and popularized by Addy Osmani, **loop engineering** is the design of the control system that replaces the human operator. Unlike prompt, context, or harness engineering, loop engineering does not improve how a person interacts with an LLM—it automates the observation, decision-making, and iteration that a human would otherwise perform between prompts.
@@ -86,7 +88,7 @@ Regulate the repository through a sequence of verified state transitions using c
 
 Tier C observes the repository as a complete system rather than a sequence of individual changes. Even when each local transition succeeds, interactions between changes may produce unexpected behaviour.
 
-The final tier therefore verifies the integrated system and iterates until the overall task has converged.
+The final tier therefore verifies the integrated system against the **final goal state** — the overall task's target — and iterates until it is met.
 
 **Primary signals**
 - Full verification suite
@@ -120,7 +122,8 @@ document(repository-analysis.md)            # human-readable architecture analys
 plan = create_plan(analysis) -> plan.json   # each step has: objective, files,
                                              #   goal_state[],
                                             #   verification[] {type, command, reason},
-                                            #   tests_to_create[]
+                                            #   tests_to_create[],
+                                            #   review_checklist[]  (reviewer fills in)
 
 // 3. Run implement agent (docs baked into Docker image, prompted to read them)
 implement(plan)
@@ -149,7 +152,8 @@ for step in plan:                          # each step parsed from plan.json
     write(current-step.json)               # step.id, .objective, .files,
                                             #   .goal_state[],
                                            #   .verification[] {type, command, reason},
-                                           #   .tests_to_create[]
+                                           #   .tests_to_create[],
+                                           #   .review_checklist[]
 
     write(repair-feedback.json)            # only on retry: why the last attempt failed
 
@@ -221,14 +225,16 @@ repeat until all_tests_pass and review.approved:
 
 Key invariants:
 - **The planner defines the goal state for each implementation step before implementation begins.** The implementation agent is responsible for achieving that goal state, not redefining it.
-- **`verification[]` defines how the orchestrator will determine whether the step's goal state has been achieved.** Verification may reuse existing tests, require new tests to be created, or use builds, type checking, execution, or other executable checks. Each entry has a `type`:
+- **Each step's goal state is confirmed two ways: programmatically AND by independent review.** Every step MUST carry a non-empty `verification[]` (at least one programmatic check) and a non-empty `review_checklist[]`.
+- **`verification[]` is the programmatic side** — how the orchestrator determines whether the goal state has been achieved. Each entry has a `type`:
   - `existing_test` — test already exists; run it pre- and post-patch for regression
   - `new_test` — test does not exist yet; agent must create it. The test function name MUST appear in `tests_to_create[]`, and the orchestrator verifies it was written.
   - `typecheck` / `build` / `execution` — non-test observation mechanisms
+- **`review_checklist[]` is the review side** — concrete, checkable statements about the goal state that the independent review agent fills in, marking each met / not-met with brief evidence.
 - **The planner decides what must be achieved and how success will be measured. The implementation agent decides how to modify the code to satisfy those requirements.** This separation of responsibilities is central to the architecture.
 - **Verification determines whether the predefined goal state has been achieved. Review evaluates whether the implementation is appropriate and may update the remaining plan.**
-- The `tests_to_create[]` array documents what new test instrumentation the implement agent must write. The orchestrator parses the agent's patch to confirm each listed function was actually created.
-- **Review is independent** — a separate agent (no code modification access, no test execution) evaluates the step's output against its goal state and may propose plan updates for remaining steps.
+- The `tests_to_create[]` array documents the new test functions the implement agent must write. The orchestrator parses the agent's patch to confirm each was actually created; **a step whose declared tests are missing — or that collects zero tests when run — fails and re-enters the repair loop with targeted feedback** (no vacuous pass).
+- **Review is independent** — a separate agent (no code modification access, no test execution) works through the step's `review_checklist[]` against the goal state. It requires rework only when a checklist item is clearly unmet (obvious goal-state misalignment); style, design, and out-of-scope concerns go to `plan_updates`, never to rework.
 
 ### Historical note
 
@@ -273,8 +279,21 @@ configs can target either backend.
 | Tier | Config | Description | How the loop is enforced | Result |
 |---|---|---|---|---|
 | **A** | `opencode-deepseek-tierA-research-dummy.yaml` + `...tierA-implement-dummy.yaml` | Two-phase: research agent locked to `docs/` → implement agent prompted to read and follow docs | **Permissions** — research agent locked to `docs/` only; **Prompt** — Phase 2 instructed to read `docs/` and follow plan | ✅ Research agent forced to produce docs; Phase 2 follows plan |
-| **B** | `opencode-deepseek-tierB-plan-dummy.yaml` + `...tierB-implement-dummy.yaml` + `...tierB-review-dummy.yaml` | Phase 0: planning agent produces `plan.json`. Per-step: implement → verify step-specific tests → review (agent critic) → repair loop → persist | **Permissions** — planner locked to `docs/`; reviewer read-only; **Script** — `run-tierB.py` orchestrates loop | ✅ Planner produces machine-parseable plan; step verifier runs only step's tests; reviewer evaluates output |
-| **C** | (planned) | B + whole-system test + review convergence loop | Permissions + script | TBD |
+| **B** | `opencode-deepseek-tierB-{plan,implement,review}-dummy.yaml` (+ `-modal` variants) | Phase 0: planning agent produces `plan.json`. Per-step: implement → verify step-specific tests → review (agent critic fills a checklist) → repair loop → persist | **Permissions** — planner locked to `docs/`; reviewer read-only; **Script** — `run-tierB.py` orchestrates loop (`--modal` runs on Modal) | ✅ Each step confirmed two ways — programmatic `verification[]` + a `review_checklist[]` the critic fills in; orchestrator enforces test creation (missing / zero-collected tests → repair); reviewer reworks only obvious goal-state misalignment |
+| **C** | (planned) | B + whole-system verification against the **final goal state** + review convergence loop | Permissions + script | TBD |
+
+### Results on the deep-SWE subset
+
+Measured on a subset of real deep-SWE tasks (hidden fail-to-pass tests, one attempt per task, same fixed model):
+
+| Configuration | Fail-to-pass fixed |
+|---|---|
+| No control loop (raw agent) | 84% (242/287) |
+| **Tier A — Preparation** | **85% (244/287)** |
+| Tier B — Verified transitions | pending |
+| Tier C — Convergence | pending |
+
+On this subset Tier A ≈ the raw baseline (within run-to-run noise at n=1), while the structured-prompt variant (Exp2a) trailed at 68%. Tier B and C results to come. On the small dummy task all approaches hit the 9/9 ceiling, so the differentiators there are whether the structure is actually enforced and the token cost (below).
 
 ### Earlier baselines (Exp 1–3b)
 

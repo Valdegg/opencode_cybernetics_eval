@@ -25,9 +25,10 @@ agents:
               functionality. If the step has repair feedback (previous attempt failed),
               read `/app/docs/repair-feedback.json` for details on what went wrong.
 
-              Create the test functions listed in `tests_to_create[]` — they are
-              required for verification to pass. Add them to the appropriate existing
-              test files.
+              MANDATORY: create EVERY function listed in `tests_to_create[]` as a
+              real `def <name>(...)` in the appropriate test file. The step is failed
+              and repeated if any is missing, or if no tests are collected when it
+              runs. These tests are required for verification to pass.
               After implementing, verify correctness by running the specific tests
               listed in `verification[].command`. If tests fail, fix the issues before finishing.
         provider:
