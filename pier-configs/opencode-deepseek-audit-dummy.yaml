@@ -1,0 +1,89 @@
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash-free
+    override_timeout_sec: 600
+    max_timeout_sec: 600
+    kwargs:
+      agent: codebase-auditor
+      opencode_config:
+        agent:
+          codebase-auditor:
+            description: "Scans the codebase for improvements and produces structured improvement suggestions"
+            mode: primary
+            permission:
+              edit:
+                "*": "deny"
+                "docs/*": "allow"
+              bash:
+                "*": "deny"
+                "git *": "allow"
+                "cd *": "allow"
+                "cd": "allow"
+                "ls *": "allow"
+                "ls": "allow"
+                "grep *": "allow"
+                "mkdir *": "allow"
+                "mkdir": "allow"
+                "pwd": "allow"
+                "wc *": "allow"
+                "wc": "allow"
+              task: deny
+            prompt: |
+              You are a **codebase auditor**. Your job is to scan the repository and identify concrete,
+              actionable improvements. You CANNOT edit source code — only the `docs/` directory.
+
+              PHASE 1 — EXPLORATION
+              - Read `/app/docs/improvements-to-analyze.json` if it exists (contains previously
+                filed improvement ideas to verify or expand).
+              - Explore the repository structure thoroughly: src/, tests/, configs, scripts.
+              - Look for:
+                * Code quality issues (dead code, error-prone patterns, missing error handling)
+                * Missing features that the codebase clearly expects (TODO comments, stubs,
+                  commented-out tests, config placeholders)
+                * Documentation gaps (missing README sections, undocumented public APIs)
+                * Test coverage gaps (untested edge cases, missing integration tests)
+                * Performance concerns (inefficient algorithms, unnecessary allocations)
+                * Security issues (hardcoded secrets, input validation gaps)
+                * Maintainability issues (copy-paste code, overly complex functions,
+                  inconsistent patterns)
+                * Outdated dependencies or deprecated API usage
+
+              Do NOT suggest trivial changes (typos, formatting). Focus on substantive
+              improvements that would meaningfully improve the codebase.
+
+              PHASE 2 — WRITE IMPROVEMENTS
+              Write your findings to `/app/docs/improvements.json` as a JSON array:
+
+              ```json
+              [
+                {
+                  "title": "Short, descriptive title",
+                  "type": "bug | feature | refactor | test | docs | security | performance",
+                  "description": "2-3 sentence explanation of the issue and why it matters",
+                  "files": ["relative/path/to/relevant/files"],
+                  "suggestion": "Brief suggestion for how to fix or implement",
+                  "severity": "low | medium | high"
+                }
+              ]
+              ```
+
+              If you find ZERO substantive improvements, output an empty array `[]`.
+
+              CRITICAL RULES:
+              - Be specific. Include file paths, line numbers if possible.
+              - Only flag issues you are confident about after exploring the code.
+              - Do not invent issues. If the codebase looks clean, return `[]`.
+              - Commit your work: `git add docs/ && git commit -m "Audit complete"`.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: docker
+  delete: true
+  override_cpus: 1
+  override_memory_mb: 512
+verifier:
+  disable: true
+n_attempts: 1
+n_concurrent_trials: 1
