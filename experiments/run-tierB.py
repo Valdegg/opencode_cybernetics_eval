@@ -657,13 +657,16 @@ def main():
         for attempt in range(1, MAX_REPAIR_ATTEMPTS + 1):
             log(f"--- Implement attempt {attempt}/{MAX_REPAIR_ATTEMPTS} ---")
 
-            # Build from cumulative state
-            build_dir = copy_task_dir(cumulative_dir)
+            # Build source: git-clone tasks carry prior steps via the baked
+            # cumulative patch, so build from the PRISTINE task (immune to any
+            # cumulative_dir mutation). Dummy tasks accumulate in cumulative_dir.
+            build_dir = copy_task_dir(TASK_DIR if git_clone else cumulative_dir)
             docs_dir = build_dir / "environment" / "docs"
             docs_dir.mkdir(parents=True, exist_ok=True)
 
             (docs_dir / "current-step.json").write_text(json.dumps(step, indent=2))
 
+            # Persist repair feedback in cumulative_dir; carry it into build_dir.
             repair_docs = cumulative_dir / "environment" / "docs"
             repair_docs.mkdir(parents=True, exist_ok=True)
             repair_fb = repair_docs / "repair-feedback.json"
@@ -673,6 +676,8 @@ def main():
                     "attempt": attempt,
                     "previous_failure": f"Step-specific tests failed on attempt {attempt - 1}"
                 }))
+            if repair_fb.exists():
+                shutil.copy2(repair_fb, docs_dir / "repair-feedback.json")
 
             inject_docs_into_dockerfile(build_dir)
             if git_clone:
@@ -756,7 +761,7 @@ def main():
                     # rejects, the patch is discarded and cumulative_dir stays
                     # clean — no unverified state transition leaks forward.
                     log(f"--- Reviewing step {step_id} ---")
-                    review_dir = copy_task_dir(cumulative_dir)
+                    review_dir = copy_task_dir(TASK_DIR if git_clone else cumulative_dir)
                     docs_dir = review_dir / "environment" / "docs"
                     docs_dir.mkdir(parents=True, exist_ok=True)
                     (docs_dir / "current-step.json").write_text(json.dumps(step, indent=2))
@@ -792,9 +797,14 @@ def main():
                                     log(f"  Not approved: {feedback[:300]}")
                                     if review_data.get("requires_rework") and attempt < MAX_REPAIR_ATTEMPTS:
                                         log(f"  Step needs rework — re-entering repair loop")
-                                        # Apply patch so the repair attempt builds on it
+                                        # Carry this attempt forward so the repair builds on it.
+                                        # git-clone: keep it as the cumulative patch baked into
+                                        # the next build; dummy: apply to cumulative_dir/src.
                                         if step_patch_file:
-                                            apply_patch_to_src(cumulative_dir, step_patch_file)
+                                            if git_clone:
+                                                cumulative_patch_file = step_patch_file
+                                            else:
+                                                apply_patch_to_src(cumulative_dir, step_patch_file)
                                         # Write repair feedback for next attempt
                                         repair = {"step": step, "attempt": attempt + 1,
                                                   "previous_failure": feedback}
