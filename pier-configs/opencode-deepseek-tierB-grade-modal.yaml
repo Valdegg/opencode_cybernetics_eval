@@ -1,0 +1,41 @@
+# Tier B final grading — runs the task's REAL verifier (grader.py + hidden
+# f2p_node_ids) on the accumulated patch, for a benchmark-comparable score.
+# The accumulated changes are baked into the env before this runs; the agent is
+# a no-op so pre_artifacts captures exactly the accumulated diff as model.patch.
+agents:
+  - name: opencode
+    model_name: opencode/deepseek-v4-flash
+    override_timeout_sec: 600
+    max_timeout_sec: 600
+    kwargs:
+      agent: tierB-grader
+      opencode_config:
+        agent:
+          tierB-grader:
+            description: "No-op: the implementation is already applied; just confirm and finish"
+            mode: primary
+            permission:
+              edit:
+                "*": "deny"
+              bash:
+                "*": "deny"
+                "git status": "allow"
+                "git log *": "allow"
+              task: deny
+            prompt: |
+              The implementation is already complete and committed in this
+              repository. Do NOT make any changes. Run `git log --oneline -1`
+              to confirm, then finish immediately.
+        provider:
+          opencode:
+            options:
+              baseURL: "https://opencode.ai/zen/v1"
+environment:
+  type: modal
+  delete: true
+  override_cpus: 4
+  override_memory_mb: 16384
+verifier:
+  disable: false
+n_attempts: 1
+n_concurrent_trials: 1

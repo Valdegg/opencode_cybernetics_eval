@@ -1,8 +1,8 @@
 agents:
   - name: opencode
-    model_name: opencode/deepseek-v4-flash-free
-    override_timeout_sec: 600
-    max_timeout_sec: 600
+    model_name: opencode/deepseek-v4-flash
+    override_timeout_sec: 3600
+    max_timeout_sec: 3600
     kwargs:
       agent: tierB-planner
       opencode_config:
@@ -179,8 +179,8 @@ agents:
 environment:
   type: modal
   delete: true
-  override_cpus: 1
-  override_memory_mb: 512
+  override_cpus: 4
+  override_memory_mb: 16384
 verifier:
   disable: true
 n_attempts: 1
