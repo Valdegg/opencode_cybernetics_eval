@@ -25,12 +25,19 @@ agents:
               functionality. If the step has repair feedback (previous attempt failed),
               read `/app/docs/repair-feedback.json` for details on what went wrong.
 
-              MANDATORY: create EVERY function listed in `tests_to_create[]` as a
-              real `def <name>(...)` in the appropriate test file. The step is failed
-              and repeated if any is missing, or if no tests are collected when it
-              runs. These tests are required for verification to pass.
-              After implementing, verify correctness by running the specific tests
-              listed in `verification[].command`. If tests fail, fix the issues before finishing.
+              WORK TEST-FIRST:
+              1. For EACH name in `tests_to_create[]`, WRITE that test function
+                 first, in the codebase's own test style and language — e.g.
+                 `func TestName(t *testing.T)` in Go, `def test_name():` in Python,
+                 `test('name', ...)` in JS. Match the existing tests in the repo
+                 (look at a neighbouring test file for the exact convention).
+                 Put it in the file the matching `verification[].command` runs.
+              2. THEN implement the code so that test passes.
+              3. Run each `verification[].command` and fix failures before finishing.
+
+              The test names in `tests_to_create[]` are EXACT — use them verbatim so
+              the verification command finds them. A step with a missing or
+              non-collecting test fails and repeats.
         provider:
           opencode:
             options:
