@@ -13,7 +13,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 AUDIT_CONFIG = PROJECT_ROOT / "pier-configs" / "opencode-deepseek-audit-dummy.yaml"
-TASK_DIR = PROJECT_ROOT / "deep-swe/tasks/dummy-adaptix-alias"
+TASK_DIR = None  # set dynamically below
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "Valdegg/opencode_cybernetics_eval")
 TEMP_PREFIX = "audit-task-"
@@ -198,6 +198,97 @@ def write_improvements_to_docs(improvements):
     log(f"Wrote {len(improvements)} improvements to {existing_file}")
 
 
+def make_self_audit_task():
+    """Create a temp task directory that wraps the project root for self-audit."""
+    tmp = Path(tempfile.mkdtemp(prefix="self-audit-"))
+    env_dir = tmp / "environment"
+    env_dir.mkdir(parents=True)
+    # Copy the project source (excluding .git and noise) into environment/src/
+    src_dir = env_dir / "src"
+    shutil.copytree(PROJECT_ROOT, src_dir, symlinks=True,
+                    ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc",
+                                                   ".venv", "node_modules", "jobs", ".opencode"))
+    (src_dir / ".gitignore").write_text("__pycache__/\n*.pyc\n")
+    (env_dir / "Dockerfile").write_text(f"""FROM python:3.12
+RUN apt-get update -qq && apt-get install -y -qq git curl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY src/ /app/
+RUN pip install --no-cache-dir pytest pyyaml && \\
+    echo "__pycache__/" > /app/.gitignore && \\
+    echo "*.pyc" >> /app/.gitignore && \\
+    git init && git config user.email "dev@example.com" && \\
+    git config user.name "Developer" && \\
+    git add -A 2>/dev/null; git commit -m "init" --allow-empty && git tag _baseline
+CMD ["/bin/bash"]""")
+    # tests/ dir (needed for is_valid check even though verifier is disabled)
+    tests_dir = tmp / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "test.sh").write_text("#!/bin/bash\nexit 0\n")
+    (tests_dir / "test.sh").chmod(0o755)
+    (tmp / "instruction.md").write_text("""# Audit the codebase
+
+Analyze this experiment framework repository thoroughly.
+Look for code quality issues, missing features, test gaps,
+security concerns, and maintainability improvements.
+
+Focus on the experiment framework code (experiments/, pier-configs/,
+deep-swe/tasks/dummy-adaptix-alias/) not the benchmark task directories.
+
+Write findings to /app/docs/improvements.json.
+""")
+    task_toml = """schema_version = "1.1"
+artifacts = ["/logs/artifacts/model.patch"]
+[task]
+name = "datacurve/self-audit"
+description = "Codebase audit of the experiment framework"
+authors = []
+keywords = []
+[metadata]
+ext_id = "self-audit"
+task_id = "self-audit"
+display_title = "Self audit"
+display_description = "Analyzes the experiment framework for improvements"
+category = "audit"
+language = "python"
+repository_url = ""
+base_commit_hash = "HEAD"
+[verifier]
+environment_mode = "separate"
+timeout_sec = 60.0
+[verifier.env]
+[verifier.environment]
+build_timeout_sec = 120.0
+cpus = 1
+memory_mb = 512
+storage_mb = 1024
+allow_internet = false
+[agent]
+timeout_sec = 600.0
+[environment]
+build_timeout_sec = 120.0
+cpus = 1
+memory_mb = 512
+storage_mb = 1024
+allow_internet = false
+mcp_servers = []
+[environment.env]
+[solution.env]"""
+    (tmp / "task.toml").write_text(task_toml)
+    (tmp / "pre_artifacts.sh").write_text(textwrap.dedent("""\
+    #!/bin/bash
+    set -uo pipefail
+    cd /app || exit 0
+    mkdir -p /logs/artifacts
+    git config --global --add safe.directory /app 2>/dev/null || true
+    git add -A 2>/dev/null || true
+    git commit --allow-empty -m "pre_artifacts auto-commit" 2>/dev/null || true
+    git diff --binary _baseline HEAD > /logs/artifacts/model.patch 2>/dev/null || true
+    echo "[pre_artifacts] captured $(wc -c < /logs/artifacts/model.patch) bytes"
+    """))
+    (tmp / "pre_artifacts.sh").chmod(0o755)
+    return tmp
+
+
 def main():
     global TASK_DIR
     dry_run = "--dry-run" in sys.argv
@@ -215,23 +306,30 @@ def main():
                 except ValueError:
                     pass
 
+    if TASK_DIR is None:
+        TASK_DIR = make_self_audit_task()
+        log(f"Created self-audit task at {TASK_DIR}")
+        cleanup_self = True
+    else:
+        cleanup_self = False
+
     if poll_interval:
         log(f"Polling every {poll_interval}s (dry_run={dry_run})")
         while True:
             load_filed_issues()
             improvements = run_audit(TASK_DIR)
-            if improvements:
-                write_improvements_to_docs(improvements)
-                if not dry_run:
-                    for imp in improvements:
-                        create_issue(imp)
-                else:
-                    log(f"[DRY-RUN] Would create {len(improvements)} issues:")
-                    for imp in improvements:
-                        log(f"  - [{imp.get('severity','?')}] {imp['title'][:100]}")
+        if improvements:
+            write_improvements_to_docs(improvements)
+            if not dry_run:
+                for imp in improvements:
+                    create_issue(imp)
             else:
-                log("No improvements found")
-            time.sleep(poll_interval)
+                log(f"[DRY-RUN] Would create {len(improvements)} issues:")
+                for imp in improvements:
+                    log(f"  - [{imp.get('severity','?')}] {imp['title'][:100]}")
+        else:
+            log("No improvements found")
+        time.sleep(poll_interval)
     else:
         load_filed_issues()
         improvements = run_audit(TASK_DIR)
@@ -246,6 +344,10 @@ def main():
                     log(f"  - [{imp.get('severity','?')}] {imp['title'][:100]}")
         else:
             log("No improvements found")
+
+    if cleanup_self and TASK_DIR and TASK_DIR.name.startswith("self-audit-"):
+        shutil.rmtree(TASK_DIR, ignore_errors=True)
+        log(f"Cleaned up self-audit task at {TASK_DIR}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,130 @@
+[
+  {
+    "title": "Implement alias support for NameMapping",
+    "type": "feature",
+    "description": "Added alias support to the NameMapping class, allowing fields to be resolved from multiple input key names. This enables flexible field mapping where external data may use different key names for the same field.",
+    "files": [
+      "src/adaptix/morphing/name_layout/mapping.py",
+      "src/adaptix/morphing/name_layout/base.py",
+      "src/adaptix/morphing/name_layout/component.py"
+    ],
+    "suggestion": "Implemented NameMapping.add_alias() for registering aliases, updated resolve() with a two-pass algorithm where primary keys take precedence over aliases, added aliases parameter to MappingConfig and name_mapping() factory.",
+    "severity": "medium"
+  },
+  {
+    "title": "run-audit.py --poll mode has dead code that never processes results",
+    "type": "bug",
+    "description": "In the `--poll` code path (line 316-332), the `if improvements:` block is indented one level less than the `while True:` body, placing it OUTSIDE the loop. This means the polling loop calls `load_filed_issues()` and `run_audit()` forever but NEVER processes, writes, or acts on the results. The entire results-processing logic (including `write_improvements_to_docs()` and `create_issue()`) and the `time.sleep(poll_interval)` are dead code. The `--poll` feature is completely broken.",
+    "files": [
+      "experiments/run-audit.py"
+    ],
+    "suggestion": "Move the results-processing block (lines 321-331) inside the `while True:` loop and add `time.sleep(poll_interval)` at the bottom of the loop body. Also ensure the non-polling path (lines 334-346) remains as the single-shot execution.",
+    "severity": "high"
+  },
+  {
+    "title": "issue-listener.py embeds GITHUB_TOKEN in git clone URL, leaking credentials",
+    "type": "security",
+    "description": "Line 31 constructs `CLONE_URL = f\"https://x-access-token:{GITHUB_TOKEN}@github.com/{GITHUB_REPO}.git\"`. This URL with embedded token is then passed to `git clone` (line 117). The full URL with token appears in process listings (`ps aux`), system logs, and is visible to any user on the machine. This is a credential exposure vulnerability.",
+    "files": [
+      "experiments/issue-listener.py"
+    ],
+    "suggestion": "Use `git clone` with `GIT_ASKPASS` or a credentials helper file instead of embedding the token in the URL. Alternatively, use SSH-based cloning with a deploy key, or set the token via `git remote set-url origin <url>` after cloning without auth.",
+    "severity": "high"
+  },
+  {
+    "title": "Hardcoded developer-specific absolute paths in Pier configs break portability",
+    "type": "bug",
+    "description": "Three Pier configs (`opencode-deepseek-dummy.yaml`, `opencode-deepseek-exp2-prompt-dummy.yaml`, `opencode-deepseek-exp2-orchestrator-dummy.yaml`) contain `path: /Users/valdimareggertsson/Documents/Default Project/deep-swe/tasks` in their `datasets` section. These absolute paths only work on one specific developer machine and cause hard failures for anyone else running the experiment framework.",
+    "files": [
+      "pier-configs/opencode-deepseek-dummy.yaml",
+      "pier-configs/opencode-deepseek-exp2-prompt-dummy.yaml",
+      "pier-configs/opencode-deepseek-exp2-orchestrator-dummy.yaml"
+    ],
+    "suggestion": "Replace the absolute path with a relative path from the project root, e.g. `../../deep-swe/tasks` or make it configurable via an environment variable.",
+    "severity": "high"
+  },
+  {
+    "title": "Massive code duplication across experiment runner scripts",
+    "type": "refactor",
+    "description": "Five runner scripts (`run-tierA.py`, `run-tierA-modal-test10.py`, `run-tierB.py`, `run-exp3b.py`, `run-audit.py`) independently re-implement the same utility functions: `find_latest_job_dir()` (4 copies), `run_pier()` (5 copies), `extract_docs_from_patch()` (3 copies), `write_pre_artifacts()` (3 copies), `inject_docs_into_dockerfile()` (2 copies), `save_results()` (4 copies), `cleanup_temp_dirs()` (4 copies), and `extract_patch_file()` (4 copies). This makes fixes and improvements tedious \u2014 a bug fix in one must be manually replicated in all copies, and they often drift.",
+    "files": [
+      "experiments/run-tierA.py",
+      "experiments/run-tierA-modal-test10.py",
+      "experiments/run-tierB.py",
+      "experiments/run-exp3b.py",
+      "experiments/run-audit.py"
+    ],
+    "suggestion": "Extract all shared utility functions into a single module (e.g. `experiments/_shared.py` or a small package with `__init__.py`) and import them in each runner. Add the `experiments/` directory to `PYTHONPATH` or install as a package.",
+    "severity": "high"
+  },
+  {
+    "title": "issue-listener.py hardcodes 'main' branch for git push",
+    "type": "bug",
+    "description": "Line 103 runs `git push origin main` which assumes the default branch is always 'main'. Repositories with 'master' as default (or any other branch name) will fail to push, silently losing accumulated learnings. The `commit_learnings()` function already swallows the push failure (only log, no raise), so data loss is silent.",
+    "files": [
+      "experiments/issue-listener.py"
+    ],
+    "suggestion": "Detect the default branch dynamically: run `git rev-parse --abbrev-ref HEAD` or `git symbolic-ref refs/remotes/origin/HEAD | sed 's@.*/@@'`. Use that value instead of hardcoded 'main'.",
+    "severity": "medium"
+  },
+  {
+    "title": "improvements-filed.json in docs/ grows without bound",
+    "type": "refactor",
+    "description": "Each audit run in `write_improvements_to_docs()` (line 185-198 of run-audit.py) reads the existing `improvements-filed.json`, appends new findings, and writes back the entire array. There is no deduplication, no archiving, and no pruning. As the file grows (already contains 1 entry), reads/writes become slower and the file becomes unwieldy for the agent to process.",
+    "files": [
+      "experiments/run-audit.py"
+    ],
+    "suggestion": "Implement deduplication by title before appending, or switch to a per-run file pattern (e.g. `improvements-<timestamp>.json`). Consider capping file size or archiving old entries.",
+    "severity": "low"
+  },
+  {
+    "title": "inject_step_verifier() embeds complex Python logic in shell heredoc strings, impossible to debug",
+    "type": "refactor",
+    "description": "The `inject_step_verifier()` method in `run-tierB.py` (lines 313-354) writes a shell script that contains a multi-line Python script inside a heredoc (`python3 << 'PYEOF' ... PYEOF`). The Python is embedded as a Python f-string inside a Python function. Any syntax error or escaping bug produces a runtime failure inside a Docker container with no reasonable debugging path. The inline Python parses XML, globs files, reads environment variables, and writes JSON \u2014 all logic that should be debuggable.",
+    "files": [
+      "experiments/run-tierB.py"
+    ],
+    "suggestion": "Extract the verifier script logic into a standalone Python file (e.g. `experiments/_step_verifier.py`) that the test.sh script can invoke. This ensures it benefits from Python syntax checking, linting, and testability.",
+    "severity": "medium"
+  },
+  {
+    "title": "run-tierB.py uses global mutable state for config and task directory",
+    "type": "refactor",
+    "description": "The `main()` function uses `global PLAN_CONFIG, IMPLEMENT_CONFIG, REVIEW_CONFIG, GRADE_CONFIG` and `global TASK_DIR` (lines 545, 553). This makes the script stateful and difficult to test: importing any function triggers side effects, and the globals can be mutated from anywhere. It also prevents running multiple Tier B instances in the same process.",
+    "files": [
+      "experiments/run-tierB.py"
+    ],
+    "suggestion": "Encapsulate configuration and task directory in a `TierBRunner` class or pass them as explicit parameters through the call chain instead of relying on module-level globals modified via `global`.",
+    "severity": "medium"
+  },
+  {
+    "title": "issue-listener.py webhook server uses plain HTTP with no TLS support",
+    "type": "security",
+    "description": "The webhook server (line 310-312) binds to `0.0.0.0` on plain HTTP with no TLS. GitHub webhook payloads carry secrets (issue content, metadata) that are transmitted in cleartext. The webhook secret-based signature verification provides integrity but no confidentiality.",
+    "files": [
+      "experiments/issue-listener.py"
+    ],
+    "suggestion": "Add TLS support via `http.server.HTTPServer` with SSL context, or explicitly document that the listener should be deployed behind a TLS-terminating reverse proxy (e.g. nginx, Caddy). Consider adding a startup warning if no TLS is configured.",
+    "severity": "medium"
+  },
+  {
+    "title": "task-subsets/test10.json contains 9 tasks but is named 'test10'",
+    "type": "bug",
+    "description": "The file `task-subsets/test10.json` contains exactly 9 task names but the filename implies a 10-task subset. The README of `run-tierA-modal-test10.py` also refers to 'first-10 deep-swe test set'. This mismatch means the 10th task is unintentionally omitted from all test runs.",
+    "files": [
+      "task-subsets/test10.json"
+    ],
+    "suggestion": "Either add the 10th task name to the JSON array or rename the file to `test9.json` and update all references (including docstrings in `run-tierA-modal-test10.py`).",
+    "severity": "low"
+  },
+  {
+    "title": "pier-configs/opencode-deepseek-tierB-grade-modal.yaml uses different model than all other configs",
+    "type": "bug",
+    "description": "All experiment configs use `opencode/deepseek-v4-flash-free` as the model, but `opencode-deepseek-tierB-grade-modal.yaml` (line 8) uses `opencode/deepseek-v4-flash` (without the `-free` suffix). This inconsistency means Tier B final grading runs a different (potentially paid vs free) model, producing non-comparable results.",
+    "files": [
+      "pier-configs/opencode-deepseek-tierB-grade-modal.yaml"
+    ],
+    "suggestion": "Change line 8 from `opencode/deepseek-v4-flash` to `opencode/deepseek-v4-flash-free` to match all other configs, or document why the different model is intentional.",
+    "severity": "medium"
+  }
+]
